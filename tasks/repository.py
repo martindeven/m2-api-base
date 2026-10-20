@@ -53,13 +53,11 @@ def list_by_assignee(assignee_id: int) -> list[Task]:
 
 
 def find_by_idempotency_key(key: str) -> tuple[str, Task] | None:
-    # TODO(CA-26..CA-28, CA-31): (huella, tarea) guardadas para la clave, o None.
-    raise NotImplementedError
+    return _idempotency_keys.get(key)
 
 
 def save_idempotency_key(key: str, fingerprint: str, task: Task) -> None:
-    # TODO(CA-26, CA-29): guardar la clave solo tras un 201.
-    raise NotImplementedError
+    _idempotency_keys[key] = (fingerprint, task)
 
 
 def reset() -> None:

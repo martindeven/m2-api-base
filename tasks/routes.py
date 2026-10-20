@@ -3,7 +3,7 @@
 Mismo patrón que `users/routes.py`: `response_model=` siempre, sin lógica de
 negocio; la función delega en `service.py`, que levanta los errores con `core.errors`.
 """
-from fastapi import APIRouter, Header, status
+from fastapi import APIRouter, Header, Response, status
 
 from tasks import service
 from tasks.schemas import Task, TaskCreate
@@ -24,9 +24,12 @@ def get_task(task_id: int) -> Task:
 @router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(
     data: TaskCreate,
+    response: Response,
     idempotency_key: str | None = Header(
         default=None, alias="Idempotency-Key", min_length=1, max_length=64
     ),
 ) -> Task:
-    # TODO(CA-26, CA-27): responder 200 (no 201) en una repetición idempotente.
-    return service.create_task(data, idempotency_key)
+    # service decide si se ha creado (201) o es una repetición idempotente (200).
+    task, created = service.create_task(data, idempotency_key)
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return task

@@ -959,3 +959,108 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/08-ruff.txt`](logs/08-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `feat(tasks): reglas de fecha límite y responsable`
+
+## Paso P9 — Incremental 4: idempotencia
+
+- **Prompt usado:**
+
+  ```text
+  Implementa la idempotencia de POST /tasks según @docs/feature-tasks.md:
+  - La cabecera Idempotency-Key es opcional (1–64 caracteres).
+  - Guarda la clave junto con una huella del cuerpo normalizado.
+  - Misma clave + misma huella → devuelve la tarea existente con 200.
+  - Misma clave + huella distinta → 409 desde el catálogo de errores
+    (si hace falta una función nueva en core/errors.py, propónla antes de crearla).
+  - El almacén de claves se limpia en tasks.repository.reset().
+
+  Antes de escribir código, propón el diseño en 5 líneas (dónde vive la huella, cómo
+  se devuelve 200 frente a 201 sin meter lógica en la ruta, qué error usa el 409) y
+  espera mi OK.
+  ```
+
+- **Qué propuso la IA:**
+  - Un diseño en 5 puntos (modo plan):
+    1. Huella SHA-256 en `service.py`.
+    2. Orden fecha → clave → responsable → alta → guardar la clave.
+    3. `create_task` devuelve `(task, código HTTP)`.
+    4. 409 con `errors.already_exists`.
+    5. `reset()` sin cambios.
+  - Tras aprobarse el plan, lo implementó: 86 verdes y 1 rojo (CA-17 `T00:00:00`, fuera del
+    paso).
+  - `tasks/repository.py`: `find_by_idempotency_key` y `save_idempotency_key` sobre el dict
+    `clave -> (huella, tarea)`.
+  - `tasks/service.py`: `_fingerprint()` hace un SHA-256 de
+    `model_dump(mode="json", include=<5 campos>)` con `sort_keys=True`. La clave se guarda
+    solo después de crear la tarea (CA-29).
+  - `tasks/routes.py`: parámetro `response: Response` para fijar 201 o 200.
+
+  ```python
+  fingerprint = _fingerprint(data)
+  if idempotency_key is not None:
+      stored = repository.find_by_idempotency_key(idempotency_key)
+      if stored is not None:
+          stored_fingerprint, stored_task = stored
+          if stored_fingerprint != fingerprint:
+              raise errors.conflict(
+                  f"clave de idempotencia ya existe: {idempotency_key}"
+              )
+          return stored_task, False
+  ...
+  if idempotency_key is not None:
+      repository.save_idempotency_key(idempotency_key, fingerprint, task)
+  return task, True
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - **Aceptado:** la huella SHA-256 del cuerpo validado (`model_dump(mode="json")`, claves
+    ordenadas), calculada por el service y solo guardada por el repositorio.
+  - **Aceptado:** el orden de evaluación y que la clave se guarde solo tras un 201.
+  - **Aceptado:** `reset()` limpia tareas, contador de ids y claves.
+  - **Rechazado:** que `create_task` devuelva `(task, código HTTP)`. Debe devolver
+    `(task, created: bool)` y la ruta solo asigna `response.status_code` según `created`. La
+    decisión vive en el service, pero el service no conoce códigos HTTP.
+  - **Rechazado:** el 409 con `errors.already_exists`. No encaja, porque el problema no es que
+    la tarea exista sino que la clave se reutilizó con otro cuerpo. Se añade a
+    `core/errors.py` la función genérica `conflict(message: str)`, con el estilo de
+    `invalid_request`.
+  - La IA advirtió que `conflict()` contradice la decisión 11 y la sección "No incluye" de
+    `docs/feature-tasks.md`. Mantuvo el texto del contrato
+    (`"clave de idempotencia ya existe: <clave>"`). Actualizar la especificación queda
+    [PENDIENTE].
+
+- **Iteraciones:**
+
+  ```text
+  OK al diseño con estas condiciones (si tu propuesta difiere, ajústala a esto y dime qué
+  cambiaste y por qué lo rechazo):
+  1. La decisión 200/201 vive en service: create_task devuelve (task, created: bool) y la
+     ruta solo asigna response.status_code según created. Nada de lógica ni HTTPException
+     en la ruta.
+  2. La huella es un hash (sha256) del cuerpo validado serializado con claves ordenadas
+     (model_dump con mode="json"); la calcula service, el repositorio solo la guarda.
+  3. Para el 409 añade a core/errors.py una función genérica conflict(message: str) con el
+     mismo estilo y docstring que invalid_request; already_exists no encaja porque el
+     problema no es que la tarea exista, sino que la clave se reutilizó con otro cuerpo.
+  4. reset() limpia tareas, contador de ids y claves.
+  Impleméntalo y ejecuta pytest -q y ruff check .
+  ```
+
+  → La IA cambió dos puntos de su propuesta (los otros dos ya coincidían):
+  - (1) **Rechazado:** `(task, código HTTP)` pasa a `(task, created: bool)`. La ruta asigna
+    `HTTP_201_CREATED if created else HTTP_200_OK`, sin `raise` ni `HTTPException`.
+  - (3) **Rechazado:** `errors.already_exists` pasa a `errors.conflict(...)`, nueva en
+    `core/errors.py`.
+  - (2) y (4) ya coincidían y no se modificaron.
+
+  → Ajuste: `core/errors.py` (nueva `conflict`), `tasks/service.py` (retorno `bool` y
+  `conflict`) y `tasks/routes.py` (asignación según `created`). Prueba manual con la clave
+  `K`: 201 → 200 (cuerpo normalizado) → 409 `"clave de idempotencia ya existe: K"`.
+
+- **Validación:**
+  - `pytest -q` → 86 verdes y 1 rojo, con los 6 de `users` en verde. CA-26, 27, 28 y 43 pasan
+    a verde. Sigue en rojo `test_ca17[2026-10-20T00:00:00]`: Pydantic acepta una fecha con
+    hora `00:00:00` y el contrato solo admite `YYYY-MM-DD` (regla de forma pendiente).
+    Log: [`logs/09-tests.txt`](logs/09-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/09-ruff.txt`](logs/09-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `feat(tasks): idempotencia con Idempotency-Key`

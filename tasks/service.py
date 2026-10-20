@@ -4,15 +4,20 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es 
 única que conoce `repository.py`, la que consulta `users` a través de su
 `service.py` y la que decide cuándo algo es un error de dominio (`core.errors`).
 """
+import hashlib
+import json
+
 from core import clock, errors
 from tasks import repository
 from tasks.schemas import Task, TaskCreate
 from users import service as users_service
 
 PAST_DUE_DATE_MESSAGE = "la fecha límite no puede ser anterior a hoy (UTC)"
+# Campos que cuentan para la huella del cuerpo (A5).
+FINGERPRINT_FIELDS = {"title", "description", "priority", "due_date", "assignee_id"}
 
 
-def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
+def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bool]:
     """Crea una tarea, con idempotencia opcional.
 
     Args:
@@ -20,7 +25,8 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
         idempotency_key: Valor de la cabecera `Idempotency-Key`, o None si no se envió.
 
     Returns:
-        La tarea creada, o la original si es una repetición idempotente.
+        La tarea y `created`: `True` si se ha creado, o `False` con la tarea original si
+        es una repetición idempotente (misma clave y misma huella).
 
     Raises:
         HTTPException: 422 si `due_date` es anterior a hoy (UTC), 409 si la clave ya
@@ -28,21 +34,40 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
     """
     if data.due_date is not None and data.due_date < clock.today():
         raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
-    # TODO(CA-26, CA-27, CA-28, CA-30, CA-31, CA-33): si hay clave, buscarla; misma huella
-    #     -> tarea original; huella distinta ->
-    #     errors.already_exists("clave de idempotencia", clave). Huella sobre los 5 campos
-    #     normalizados (A5).
+
+    fingerprint = _fingerprint(data)
+    if idempotency_key is not None:
+        stored = repository.find_by_idempotency_key(idempotency_key)
+        if stored is not None:
+            stored_fingerprint, stored_task = stored
+            if stored_fingerprint != fingerprint:
+                raise errors.conflict(
+                    f"clave de idempotencia ya existe: {idempotency_key}"
+                )
+            return stored_task, False
+
     if data.assignee_id is not None:
         # get_user lanza errors.not_found("usuario", assignee_id) si no existe.
         users_service.get_user(data.assignee_id)
-    # TODO(CA-29): si hay clave, guardarla con su huella solo tras crear.
-    return repository.add(
+
+    task = repository.add(
         title=data.title,
         description=data.description,
         priority=data.priority,
         due_date=data.due_date,
         assignee_id=data.assignee_id,
     )
+    # La clave solo se guarda tras crear: un 404 o 422 previo no la reserva (CA-29).
+    if idempotency_key is not None:
+        repository.save_idempotency_key(idempotency_key, fingerprint, task)
+    return task, True
+
+
+def _fingerprint(data: TaskCreate) -> str:
+    """Huella del cuerpo normalizado, independiente del orden de las claves."""
+    normalized = data.model_dump(mode="json", include=FINGERPRINT_FIELDS)
+    canonical = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def get_task(task_id: int) -> Task:
