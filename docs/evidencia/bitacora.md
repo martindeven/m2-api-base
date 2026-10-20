@@ -473,3 +473,91 @@
   Log: [`logs/03-tests.txt`](logs/03-tests.txt)
 - **Captura:** N/A
 - **Commit:** `docs(claude): convenciones para el recurso tasks`
+
+## Paso P4 — Skeleton-first: esqueleto de tasks
+
+- **Prompt usado:**
+
+  ```text
+  Lee @CLAUDE.md, @docs/feature-tasks.md y usa como ejemplo @users/routes.py,
+  @users/service.py, @users/schemas.py y @users/repository.py.
+
+  Crea SOLO el esqueleto del recurso tasks, sin implementar lógica:
+  - core/clock.py con `def today() -> date:` (TODO).
+  - tasks/__init__.py
+  - tasks/schemas.py: TaskBase, TaskCreate, Task con los campos y tipos del contrato
+    (sin validadores todavía; deja TODOs donde irían).
+  - tasks/repository.py: firmas add, get, list_all, list_by_assignee,
+    find_by_idempotency_key, save_idempotency_key y reset, con `raise NotImplementedError`
+    y TODOs.
+  - tasks/service.py: firmas create_task, get_task, list_tasks con TODOs que nombren
+    el criterio CA-XX que implementará cada parte.
+  - tasks/routes.py: APIRouter(prefix="/tasks", tags=["tasks"]) con las 3 rutas,
+    response_model y status_code, leyendo la cabecera Idempotency-Key con Header(...)
+    y delegando en service.
+
+  No registres el router en main.py todavía. No implementes nada: si una función
+  tiene lógica, el esqueleto está mal. Al final ejecuta ruff check . y pytest -q y lista
+  los archivos creados y los TODOs.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) con los 6 archivos, las firmas y los CA-XX de cada TODO, siguiendo
+    el patrón de `users/`.
+  - `core/clock.py` con `today() -> date` y `tasks/__init__.py` vacío.
+  - `tasks/schemas.py`: `TaskBase` (`title: str`, `description: str | None`,
+    `priority: int = 3`, `due_date: date | None`, `assignee_id: int | None`), `TaskCreate` y
+    `Task` (`id`, `status`, `created_at`), con TODOs de validación por campo.
+  - `tasks/repository.py` y `tasks/service.py`: firmas con `raise NotImplementedError`,
+    docstrings Google en el service y TODOs en el orden de evaluación del contrato.
+  - `tasks/routes.py`: 3 rutas con `response_model=`, `POST` con 201 y cabecera
+    `Header(default=None, alias="Idempotency-Key")` (opcional, según CA-33).
+  - Dejó fuera del paso `main.py` y la llamada a `reset()` en `conftest.py`, porque
+    `NotImplementedError` rompería los tests de `users`.
+
+  ```python
+  @router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
+  def create_task(
+      data: TaskCreate,
+      # TODO(CA-32): min_length=1, max_length=64 en el Header.
+      idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+  ) -> Task:
+      # TODO(CA-26, CA-27): responder 200 (no 201) en una repetición idempotente.
+      return service.create_task(data, idempotency_key)
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan antes de que se escribiera código.
+  - Pedí una revisión con una lista de comprobación (sin lógica, nombres, tipos y
+    `Header(...)`) para vigilar la señal de alarma de skeleton-first: que el esqueleto traiga
+    lógica.
+  - Rechacé el desempaquetado `task, created = service.create_task(...)` en la ruta y el
+    retorno `tuple[Task, bool]` del service, por ser lógica en un esqueleto.
+  - La cabecera queda opcional (`Header(default=None, alias=...)`) en lugar de `Header(...)`
+    literal, que la haría obligatoria y contradiría CA-33. Es una decisión propuesta por la
+    IA y aceptada.
+
+- **Iteraciones:**
+
+  ```text
+  Revisa tu esqueleto con esta lista y corrige lo que no cumpla, diciéndome qué cambiaste:
+  1. ¿Alguna función tiene lógica (if, bucles, cálculos, acceso real a datos)? Si sí,
+     vacíala: el esqueleto debe estar "más vacío".
+  2. Nombres en inglés y snake_case, sin abreviaturas, como en users/.
+  3. Tipos: due_date: date | None, assignee_id: int | None, priority: int.
+  4. La ruta POST lee Idempotency-Key con Header(...) y no contiene lógica.
+  Vuelve a ejecutar ruff check . y pytest -q.
+  ```
+
+  → La IA encontró lógica en la ruta `POST` (el desempaquetado de la tupla). Confirmó que
+  los nombres y los tipos ya cumplían, y explicó por qué la cabecera usa
+  `Header(default=None, alias="Idempotency-Key")`.
+  → Ajuste: la ruta queda como `return service.create_task(...)` con un TODO(CA-26, CA-27);
+  `create_task` devuelve `Task` en lugar de `tuple[Task, bool]`.
+
+- **Validación:**
+  - `ruff check .` → `All checks passed!`. Log: [`logs/04-ruff.txt`](logs/04-ruff.txt)
+  - `pytest -q` → 6 tests sin fallos (`......  [100%]`), todos de `users`; `tasks` aún no
+    está montado. Log: [`logs/04-tests.txt`](logs/04-tests.txt)
+- **Captura:** N/A
+- **Commit:** `feat(tasks): esqueleto del recurso`
