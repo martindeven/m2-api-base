@@ -6,6 +6,7 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es 
 """
 import hashlib
 import json
+from datetime import date
 
 from core import clock, errors
 from tasks import repository
@@ -32,24 +33,47 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bo
         HTTPException: 422 si `due_date` es anterior a hoy (UTC), 409 si la clave ya
             existe con otra huella, 404 si el responsable no existe.
     """
-    if data.due_date is not None and data.due_date < clock.today():
-        raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
+    _ensure_due_date_not_past(data.due_date)
 
     fingerprint = _fingerprint(data)
-    if idempotency_key is not None:
-        stored = repository.find_by_idempotency_key(idempotency_key)
-        if stored is not None:
-            stored_fingerprint, stored_task = stored
-            if stored_fingerprint != fingerprint:
-                raise errors.conflict(
-                    f"clave de idempotencia ya existe: {idempotency_key}"
-                )
-            return stored_task, False
+    replayed_task = _find_replayed_task(idempotency_key, fingerprint)
+    if replayed_task is not None:
+        return replayed_task, False
 
-    if data.assignee_id is not None:
+    _ensure_assignee_exists(data.assignee_id)
+    return _save_task(data, idempotency_key, fingerprint), True
+
+
+def _ensure_due_date_not_past(due_date: date | None) -> None:
+    """Regla de dominio: la fecha límite no puede ser anterior a hoy (UTC)."""
+    if due_date is not None and due_date < clock.today():
+        raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
+
+
+def _find_replayed_task(idempotency_key: str | None, fingerprint: str) -> Task | None:
+    """Tarea original si es una repetición idempotente; 409 si la huella no coincide."""
+    if idempotency_key is None:
+        return None
+    stored = repository.find_by_idempotency_key(idempotency_key)
+    if stored is None:
+        return None
+    stored_fingerprint, stored_task = stored
+    if stored_fingerprint != fingerprint:
+        raise errors.conflict(
+            f"clave de idempotencia ya existe: {idempotency_key}"
+        )
+    return stored_task
+
+
+def _ensure_assignee_exists(assignee_id: int | None) -> None:
+    """Regla de dominio: el responsable, si se indica, existe en `users`."""
+    if assignee_id is not None:
         # get_user lanza errors.not_found("usuario", assignee_id) si no existe.
-        users_service.get_user(data.assignee_id)
+        users_service.get_user(assignee_id)
 
+
+def _save_task(data: TaskCreate, idempotency_key: str | None, fingerprint: str) -> Task:
+    """Persiste la tarea y, si hay clave, la guarda junto con su huella."""
     task = repository.add(
         title=data.title,
         description=data.description,
@@ -60,7 +84,7 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bo
     # La clave solo se guarda tras crear: un 404 o 422 previo no la reserva (CA-29).
     if idempotency_key is not None:
         repository.save_idempotency_key(idempotency_key, fingerprint, task)
-    return task, True
+    return task
 
 
 def _fingerprint(data: TaskCreate) -> str:

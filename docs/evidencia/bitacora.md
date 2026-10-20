@@ -2091,3 +2091,60 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/21-1-ruff.txt`](logs/21-1-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `refactor(tasks): constantes con nombre para los límites de validación`
+
+## Paso P21.2 — Refactor 2
+
+- **Prompt usado:**
+
+  ```text
+  sigue. Paso 2: el smell número 2 de la lista de elegidos. Si no queda ninguno, dímelo y no cambies nada.
+  ```
+
+- **Qué propuso la IA:**
+  - Refactor 2 (elegido 2, smell 1 de P20): **Extract function en `create_task`** de
+    `tasks/service.py`. Ahora se lee en el orden de evaluación del spec: fecha → huella e
+    idempotencia → responsable → creación.
+  - Funciones privadas nuevas:
+    - `_ensure_due_date_not_past` y `_ensure_assignee_exists` (reglas de dominio);
+    - `_find_replayed_task` (búsqueda idempotente: devuelve la tarea original, `None` o 409);
+    - `_save_task` (persistencia, y la clave solo se guarda tras crear, CA-29).
+    `_fingerprint` ya existía.
+  - Se mantienen:
+    - la firma pública de `create_task`, su docstring y `PAST_DUE_DATE_MESSAGE`;
+    - las llamadas `clock.today()` y `users_service.get_user`, para que los mocks de
+      `tests/test_tasks_service.py` sigan funcionando;
+    - `errors.conflict(...)`, que se cambia en el paso 3.
+  - La huella se sigue calculando siempre. Calcularla solo con clave sería una
+    optimización sin datos, que la regla del paso prohíbe, así que el smell 10 queda fuera.
+  - Paró tras el paso a la espera de "sigue".
+
+  ```python
+  def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bool]:
+      ...
+      _ensure_due_date_not_past(data.due_date)
+
+      fingerprint = _fingerprint(data)
+      replayed_task = _find_replayed_task(idempotency_key, fingerprint)
+      if replayed_task is not None:
+          return replayed_task, False
+
+      _ensure_assignee_exists(data.assignee_id)
+      return _save_task(data, idempotency_key, fingerprint), True
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan del refactor 2, incluida la decisión de no adelantar el cálculo de la
+    huella (no optimizar sin datos).
+  - Aceptado tras revisar que el diff solo toca `tasks/service.py`, que ningún test cambió
+    y que la suite sigue en verde.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 114 tests en verde. La salida no incluye la línea de recuento.
+    Log: [`logs/21-2-tests.txt`](logs/21-2-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/21-2-ruff.txt`](logs/21-2-ruff.txt)
+  - `pytest -q --cov=tasks --cov-branch --cov-report=term-missing` (sin log guardado) →
+    `tasks/service.py` al 100 % (51 sentencias, 18 ramas, 0 parciales).
+- **Captura:** N/A
+- **Commit:** `refactor(tasks): extraer reglas de dominio, idempotencia y persistencia de create_task`
