@@ -59,9 +59,7 @@ def _find_replayed_task(idempotency_key: str | None, fingerprint: str) -> Task |
         return None
     stored_fingerprint, stored_task = stored
     if stored_fingerprint != fingerprint:
-        raise errors.conflict(
-            f"clave de idempotencia ya existe: {idempotency_key}"
-        )
+        raise errors.already_exists("clave de idempotencia", idempotency_key)
     return stored_task
 
 

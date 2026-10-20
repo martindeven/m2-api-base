@@ -2148,3 +2148,49 @@
     `tasks/service.py` al 100 % (51 sentencias, 18 ramas, 0 parciales).
 - **Captura:** N/A
 - **Commit:** `refactor(tasks): extraer reglas de dominio, idempotencia y persistencia de create_task`
+
+## Paso P21.3 — Refactor 3
+
+- **Prompt usado:**
+
+  ```text
+  sigue. Paso 3: el smell número 3 de la lista de elegidos. Si no queda ninguno, dímelo y no cambies nada.
+  ```
+
+- **Qué propuso la IA:**
+  - Refactor 3 (elegido 3, smell 2 de P20): **mensaje duplicado → una sola definición**.
+  - En `_find_replayed_task` de `tasks/service.py`, el 409 construido a mano con
+    `errors.conflict(f"clave de idempotencia ya existe: ...")` pasa a
+    `errors.already_exists("clave de idempotencia", idempotency_key)`, como pide la
+    decisión 11.
+  - Mismo comportamiento: 409 con el texto `"clave de idempotencia ya existe: <clave>"`,
+    que ahora sale solo de `core/errors.py`.
+  - Antes de cambiar nada, comprobó que los tests que comparan el texto exacto
+    (`tests/test_tasks_service.py:207, 248`) y el que busca `"ya existe"`
+    (`tests/test_tasks.py:391`) seguirían valiendo sin tocarlos.
+  - `errors.conflict` queda sin uso en producción, pero no se borra de `core/errors.py`:
+    la regla del paso prohíbe borrar abstracciones existentes.
+  - Con este paso quedan aplicados los tres refactors elegidos. Paró a la espera de "sigue".
+
+  ```diff
+       if stored_fingerprint != fingerprint:
+  -        raise errors.conflict(
+  -            f"clave de idempotencia ya existe: {idempotency_key}"
+  -        )
+  +        raise errors.already_exists("clave de idempotencia", idempotency_key)
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan del refactor 3, incluida la decisión de conservar `errors.conflict`
+    (no borrar abstracciones).
+  - Aceptado tras revisar que el diff solo toca `tasks/service.py` (1 inserción y 3
+    borrados), que ningún test cambió y que la suite sigue en verde.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 114 tests en verde. La salida no incluye la línea de recuento.
+    Log: [`logs/21-3-tests.txt`](logs/21-3-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/21-3-ruff.txt`](logs/21-3-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `refactor(tasks): 409 de idempotencia con errors.already_exists del catálogo`
