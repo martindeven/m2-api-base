@@ -6,7 +6,12 @@ negocio; la función delega en `service.py`, que levanta los errores con `core.e
 from fastapi import APIRouter, Header, Response, status
 
 from tasks import service
-from tasks.schemas import Task, TaskCreate
+from tasks.schemas import (
+    IDEMPOTENCY_KEY_MAX_LENGTH,
+    IDEMPOTENCY_KEY_MIN_LENGTH,
+    Task,
+    TaskCreate,
+)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -26,7 +31,10 @@ def create_task(
     data: TaskCreate,
     response: Response,
     idempotency_key: str | None = Header(
-        default=None, alias="Idempotency-Key", min_length=1, max_length=64
+        default=None,
+        alias="Idempotency-Key",
+        min_length=IDEMPOTENCY_KEY_MIN_LENGTH,
+        max_length=IDEMPOTENCY_KEY_MAX_LENGTH,
     ),
 ) -> Task:
     # service decide si se ha creado (201) o es una repetición idempotente (200).

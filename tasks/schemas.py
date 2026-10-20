@@ -11,15 +11,24 @@ from pydantic import BaseModel, Field, field_validator
 
 TITLE_MIN_LENGTH = 3
 TITLE_MAX_LENGTH = 120
+DESCRIPTION_MAX_LENGTH = 1000
+PRIORITY_MIN = 1
+PRIORITY_MAX = 5
+PRIORITY_DEFAULT = 3
+ASSIGNEE_ID_MIN = 1
+IDEMPOTENCY_KEY_MIN_LENGTH = 1
+IDEMPOTENCY_KEY_MAX_LENGTH = 64
 DATE_ONLY_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 class TaskBase(BaseModel):
     title: str
-    description: str | None = Field(default=None, max_length=1000)
-    priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
+    description: str | None = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
+    priority: Annotated[int, Field(strict=True, ge=PRIORITY_MIN, le=PRIORITY_MAX)] = (
+        PRIORITY_DEFAULT
+    )
     due_date: date | None = None
-    assignee_id: Annotated[int, Field(strict=True, ge=1)] | None = None
+    assignee_id: Annotated[int, Field(strict=True, ge=ASSIGNEE_ID_MIN)] | None = None
 
     @field_validator("title")
     @classmethod

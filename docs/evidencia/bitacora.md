@@ -1938,3 +1938,156 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/19-ruff.txt`](logs/19-ruff.txt)
 - **Captura:** ![Suite en verde tras el fix](capturas/P19-fix-verde.png)
 - **Commit:** `test(tasks): due_date con hora 00:00:00 aceptada como fecha + test de regresión`
+
+## Paso P20 — Inventario de code smells
+
+- **Prompt usado:**
+
+  ```text
+  Revisa @tasks/service.py, @tasks/routes.py, @tasks/schemas.py y @tasks/repository.py
+  y lista los code smells que veas, con archivo:línea, por qué es un problema y el
+  refactor que propones (Extract function, Rename, Simplify conditional, constante
+  con nombre, parameter object…). Ordénalos por impacto en la mantenibilidad en una tabla
+  numerada. No cambies nada.
+  ```
+
+- **Qué propuso la IA:**
+  - Tras leer los cuatro archivos y contrastarlos con `core/errors.py`, `users/` y la
+    decisión 11 del spec, presentó una tabla de 12 smells ordenada por impacto.
+  - Los tres de mayor impacto:
+    - `create_task` es demasiado larga;
+    - el 409 se construye a mano con `errors.conflict` en lugar de `errors.already_exists`;
+    - el repositorio decide `status` y `created_at`.
+  - Recomendó aplicarlos de uno en uno, con un commit por refactor y verificando cada vez
+    con tests, cobertura y ruff.
+  - No se cambió código.
+
+  | # | Archivo:línea | Smell | Por qué es un problema | Refactor propuesto |
+  |---|---|---|---|---|
+  | 1 | `tasks/service.py:20-63` | Función larga (`create_task`) | Mezcla 5 responsabilidades: fecha, idempotencia, responsable, alta y guardar la clave | Extract function: `_ensure_due_date_not_past`, `_find_replay`, `_ensure_assignee_exists` |
+  | 2 | `tasks/service.py:44-46` | Mensaje duplicado fuera del catálogo | `conflict(f"... ya existe: ...")` copia el formato de `already_exists`; la decisión 11 pide `already_exists` | Usar `errors.already_exists("clave de idempotencia", key)` |
+  | 3 | `tasks/repository.py:34-35` | Lógica de dominio en el repositorio | `status="pending"` y `created_at=clock.now()` se deciden en la capa de datos | Move: que el service los asigne |
+  | 4 | `tasks/repository.py:18-25` + `tasks/service.py:53-59` | Lista larga de parámetros | 5 kwargs que repiten `TaskCreate`; un campo nuevo obliga a tocar 3 sitios | Parameter object: `add(data: TaskCreate)` |
+  | 5 | `tasks/service.py:20` + `tasks/routes.py:33-34` | Flag en el retorno (`tuple[Task, bool]`) | El `bool` posicional no dice qué significa | `NamedTuple CreateTaskResult(task, created)` |
+  | 6 | `tasks/repository.py:15` + `tasks/service.py:42` | Data clump (`tuple[str, Task]`) | Se desempaqueta por posición | `NamedTuple IdempotencyRecord(fingerprint, task)` |
+  | 7 | `tasks/schemas.py:19-22` | Números mágicos (1000, 1, 5, 3) | Incoherente con `TITLE_*`; los límites del spec quedan dispersos | Constantes con nombre |
+  | 8 | `tasks/schemas.py:58-59` + `tasks/repository.py:34` | Obsesión por primitivos + TODO obsoleto | `status: str` admite cualquier texto; `"pending"` es un literal suelto | `Literal["pending"]` o constante; quitar el TODO |
+  | 9 | `tasks/routes.py:29` | Números mágicos (1, 64) | Límites de `Idempotency-Key` sin nombre | `IDEMPOTENCY_KEY_MIN/MAX_LENGTH` |
+  | 10 | `tasks/service.py:38-39, 61` | Condicional duplicado + cálculo anticipado | `idempotency_key is not None` dos veces; la huella se calcula aunque no haya clave | Simplify conditional |
+  | 11 | `tasks/schemas.py:26` | Nombre engañoso | `strip_title` también valida la longitud | Rename: `normalize_title` |
+  | 12 | `tasks/repository.py:12-15, 26` | Estado global mutable + `global` | El estado es implícito y solo se aísla con `reset()` | Bajo impacto: es el patrón de `users/` |
+
+- **Qué acepté / rechacé y por qué:**
+  - Elegí tres smells, por categorías y en este orden. La IA los asignó a la tabla y todas
+    las categorías tenían correspondencia, así que no hubo que sustituir ninguna.
+    1. **Números mágicos → constantes con nombre en `tasks/schemas.py`** (smells 7 y 9):
+       `DESCRIPTION_MAX_LENGTH`, `PRIORITY_MIN`, `PRIORITY_MAX`, `PRIORITY_DEFAULT`,
+       `ASSIGNEE_ID_MIN`, `IDEMPOTENCY_KEY_MIN_LENGTH` e `IDEMPOTENCY_KEY_MAX_LENGTH`.
+       `routes.py` importa las de la cabecera. El `120` ya existía como `TITLE_MAX_LENGTH`.
+    2. **Extract function en `create_task`** (smell 1, absorbe el 10):
+       - `_ensure_due_date_not_past` y `_ensure_assignee_exists` para las reglas de dominio;
+       - `_find_replay` para la búsqueda idempotente (`_fingerprint` ya existía);
+       - la huella solo se calcula si hay clave;
+       - se mantienen el orden de evaluación del spec y la firma pública.
+    3. **Mensaje duplicado → una sola definición** (smell 2):
+       `errors.already_exists("clave de idempotencia", key)`, con el mismo texto de respuesta.
+  - Descartados:
+
+    | # | Smell | Motivo |
+    |---|---|---|
+    | 3 | `status`/`created_at` en el repositorio | Cambio de estructura que rompe la consistencia con `users/repository.py`, que también construye la entidad en `add()` |
+    | 4 | Lista larga de parámetros en `add` | `users/repository.add(*, name, email)` usa el mismo estilo de kwargs |
+    | 5 | Retorno `tuple[Task, bool]` | Bajo impacto: un único punto de uso, ya comentado; cambiaría la firma pública del service |
+    | 6 | Registro `tuple[str, Task]` | Bajo impacto: solo se usa en un sitio y es interno |
+    | 8 | `status: str` + TODO | Cosmético; pasar a `Literal` cambiaría el esquema OpenAPI de una feature recién estabilizada |
+    | 11 | Renombrar `strip_title` | Cosmético; no compensa el riesgo |
+    | 12 | Estado global del repositorio | Rompe la consistencia con `users/` |
+
+- **Iteraciones:**
+
+  ```text
+  Elijo, de tu tabla, los smells que encajen en estas categorías, en este orden (si alguna
+  no aparece, sustitúyela por el siguiente de mayor impacto de tu tabla):
+  1. Números mágicos (1, 5, 3, 120, 1000, 64) → constantes con nombre en tasks/schemas.py.
+  2. create_task demasiado larga (mezcla idempotencia, validación de dominio y
+     persistencia) → Extract function para la huella y para las reglas de dominio.
+  3. Mensajes de error o literales duplicados → una sola definición.
+  Descarto el resto porque son cosméticos o de bajo impacto y no justifican riesgo en una
+  feature recién estabilizada, o porque romperían la consistencia con users/ (p. ej.
+  renombrados o cambios de estructura que users no sigue).
+  Dime la lista final de elegidos (numerada) y los descartados con su motivo.
+  No cambies nada todavía.
+  ```
+  → La IA dio la lista final de 3 elegidos (smells 7+9, 1+10 y 2) y 7 descartados, cada
+    uno con su motivo.
+  → Ajuste: el alcance del refactor queda fijado en esos tres. No se cambió código.
+
+- **Validación (línea base antes del refactor):**
+  - `pytest -q` → 114 tests en verde. La salida no incluye la línea de recuento.
+    Log: [`logs/20-antes-refactor-tests.txt`](logs/20-antes-refactor-tests.txt)
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 114 passed; cobertura total
+    99,55 % (193 stmts, 1 miss; 28 ramas, 0 parciales). `tasks/` y `core/` al 100 %.
+    Log: [`logs/20-antes-refactor-cobertura.txt`](logs/20-antes-refactor-cobertura.txt)
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P21.1 — Refactor 1
+
+- **Prompt usado:**
+
+  ```text
+  Refactoriza en pasos pequeños los smells que elegimos en el paso anterior, en su orden.
+  Reglas:
+  - Un refactor por paso. Después de cada paso PARA, ejecuta pytest -q y ruff check .
+    y espera a que te diga "sigue".
+  - No cambies el comportamiento: los tests NO se tocan. Si un test necesita cambiar,
+    detente y explícame por qué.
+  - No borres abstracciones existentes (core/errors.py, capas) ni optimices sin datos.
+  Paso 1: el smell número 1 de la lista de elegidos.
+  ```
+
+- **Qué propuso la IA:**
+  - Refactor 1 (elegido 1, smells 7 y 9 de P20): **números mágicos → constantes con nombre**
+    en `tasks/schemas.py`, junto a `TITLE_*`:
+    - `DESCRIPTION_MAX_LENGTH`, `PRIORITY_MIN`, `PRIORITY_MAX`, `PRIORITY_DEFAULT` y
+      `ASSIGNEE_ID_MIN`;
+    - `IDEMPOTENCY_KEY_MIN_LENGTH` e `IDEMPOTENCY_KEY_MAX_LENGTH`.
+  - `TaskBase` usa las constantes en `description`, `priority` y `assignee_id`.
+  - `tasks/routes.py` importa las dos constantes de la clave y las usa en `Header(...)`.
+  - Sin cambios en el `120` (ya era `TITLE_MAX_LENGTH`), ni en `service.py`,
+    `repository.py` o los tests.
+  - Paró tras el paso a la espera de "sigue".
+
+  ```diff
+   TITLE_MAX_LENGTH = 120
+  +DESCRIPTION_MAX_LENGTH = 1000
+  +PRIORITY_MIN = 1
+  +PRIORITY_MAX = 5
+  +PRIORITY_DEFAULT = 3
+  +ASSIGNEE_ID_MIN = 1
+  +IDEMPOTENCY_KEY_MIN_LENGTH = 1
+  +IDEMPOTENCY_KEY_MAX_LENGTH = 64
+  ...
+  -    description: str | None = Field(default=None, max_length=1000)
+  -    priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
+  +    description: str | None = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
+  +    priority: Annotated[int, Field(strict=True, ge=PRIORITY_MIN, le=PRIORITY_MAX)] = (
+  +        PRIORITY_DEFAULT
+  +    )
+  -    assignee_id: Annotated[int, Field(strict=True, ge=1)] | None = None
+  +    assignee_id: Annotated[int, Field(strict=True, ge=ASSIGNEE_ID_MIN)] | None = None
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan del refactor 1. Aceptado tras revisar que el diff solo toca
+    `tasks/schemas.py` y `tasks/routes.py`, que ningún test cambió y que la suite sigue
+    en verde.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 114 tests en verde, igual que la línea base de P20. La salida no incluye
+    la línea de recuento. Log: [`logs/21-1-tests.txt`](logs/21-1-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/21-1-ruff.txt`](logs/21-1-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `refactor(tasks): constantes con nombre para los límites de validación`
