@@ -1,0 +1,25 @@
+..........................................F............................. [ 63%]
+.........................................                                [100%]
+=================================== FAILURES ===================================
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00] _
+
+client = <starlette.testclient.TestClient object at 0x7fb89256ef90>
+due_date = '2026-10-20T00:00:00'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]

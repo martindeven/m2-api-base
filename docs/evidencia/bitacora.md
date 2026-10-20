@@ -1482,3 +1482,459 @@
   - ![Informe HTML de cobertura](capturas/P14-cobertura.png)
   - ![Cobertura en terminal](capturas/P14-cobertura-terminal.png)
 - **Commit:** `test(tasks): cobertura de ramas >90%`
+
+## Paso P15 — Mutation testing
+
+- **Prompt usado:**
+
+  ```text
+  Ejecuta mutmut run y mutmut results. Para cada mutante superviviente ejecuta
+  mutmut show <id>.
+  Para cada uno: explica qué cambió el mutante, qué criterio de @docs/feature-tasks.md
+  debería haberlo detectado y por qué ningún test falló (¿aserción débil, límite sin
+  probar, código equivalente?). Clasifícalos en una tabla: matar con un test / mutante
+  equivalente (justificar) / código sobrante. Dame los totales (muertos / vivos /
+  equivalentes). No cambies código todavía.
+  Si mutmut no puede ejecutarse en este entorno, dímelo con el error exacto y haz en su
+  lugar estas mutaciones manuales UNA a UNA en tasks/service.py, ejecutando pytest -q
+  tras cada una y restaurando el código original después: (1) `<` → `<=` en la
+  comparación de due_date; (2) invertir la condición de la huella de idempotencia;
+  (3) devolver created=True siempre; (4) quitar el filtro por assignee_id. Entrega la
+  tabla mutación | resultado | test que la mató.
+  ```
+
+- **Qué propuso la IA:**
+  - mutmut 3.8.0 se ejecutó sin errores en el entorno (WSL2, Python 3.12.3): no hizo falta
+    el plan B de mutaciones manuales.
+  - 97 mutantes en `tasks/` y `core/clock.py`: 88 muertos y 9 supervivientes, todos en
+    `tasks/service.py::_fingerprint`. Ningún mutante de `core/clock.py` sobrevivió.
+  - Antes de clasificar, la IA comprobó las premisas con el código real: los campos de
+    `TaskCreate` son exactamente `FINGERPRINT_FIELDS`; `model_dump` devuelve las claves
+    siempre en el orden de definición; los campos desconocidos no llegan al dump;
+    `utf-8` y `UTF-8` son el mismo códec.
+  - Clasificación: los 9 son equivalentes; 0 se pueden matar con un test; 2 (3 y 5) señalan
+    código sobrante (`include=FINGERPRINT_FIELDS`, redundante hoy).
+  - No se cambió código ni tests.
+
+  ```diff
+  # mutmut show tasks.service.x__fingerprint__mutmut_3: survived
+   def _fingerprint(data: TaskCreate) -> str:
+       """Huella del cuerpo normalizado, independiente del orden de las claves."""
+  -    normalized = data.model_dump(mode="json", include=FINGERPRINT_FIELDS)
+  +    normalized = data.model_dump(mode="json", include=None)
+       canonical = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+       return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+  ```
+
+- **Clasificación de supervivientes:**
+
+  | Mutante(s) | Qué cambió | Criterio que debería detectarlo | Por qué ningún test falló | Clasificación |
+  |---|---|---|---|---|
+  | 3, 5 | `include=FINGERPRINT_FIELDS` → `include=None` / eliminado | A5: la huella solo incluye title, description, priority, due_date y assignee_id | `TaskCreate` tiene exactamente esos 5 campos y Pydantic descarta los desconocidos: el dump es idéntico con o sin `include`. Ninguna entrada de `create_task` los distingue. | **Equivalente / código sobrante** |
+  | 10, 13, 15 | `sort_keys=True` → `None` / eliminado / `False` | Decisión 8 y CA-27: el orden de las claves no importa | `model_dump` ya da un orden fijo; ordenar no cambia nada. CA-27 pasa igual. | **Equivalente** |
+  | 11, 14, 16 | `ensure_ascii=False` → `None` / eliminado / `True` | Decisión 8: mismo cuerpo normalizado, misma huella | Con `True`, "ó" pasa a `ó`: otro texto, pero igual de fijo e inequívoco. Las huellas solo se comparan entre sí en memoria y no se guardan. | **Equivalente** |
+  | 20 | `"utf-8"` → `"UTF-8"` | — | Mismo códec: bytes y huella idénticos. | **Equivalente** |
+
+- **Totales:**
+
+  | Total | Muertos | Vivos | Equivalentes (de los vivos) | A matar con test | Código sobrante |
+  |---|---|---|---|---|---|
+  | 97 | 88 | 9 | 9 | 0 | 2 (mutantes 3 y 5, misma línea) |
+
+  Puntuación de mutación: 88/97 = 90,7 % bruta; 88/88 = 100 % sin contar equivalentes.
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan.
+  - Aceptado tras revisar la clasificación y las comprobaciones de equivalencia con el código real.
+  - Decisión abierta propuesta por la IA (no aplicada, "no cambies código todavía"):
+    mantener `include=FINGERPRINT_FIELDS` como guarda explícita de A5 o eliminarlo.
+    Recomendación de la IA: mantenerlo. [PENDIENTE] decidir.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `mutmut run` → 97/97 mutantes: 88 muertos, 9 supervivientes, 0 timeout, 0 sospechosos.
+    El log es de una segunda ejecución, que reutilizó los resultados en caché de la primera
+    del paso ("0.00 mutations/second"), con los mismos totales.
+    Log: [`logs/15-mutmut-run.txt`](logs/15-mutmut-run.txt)
+  - `mutmut results` → 9 supervivientes, todos `tasks.service.x__fingerprint__mutmut_*`
+    (3, 5, 10, 11, 13, 14, 15, 16, 20).
+    Log: [`logs/15-mutmut-results.txt`](logs/15-mutmut-results.txt)
+  - `mutmut show <id>` de cada superviviente → 9 diffs.
+    Log: [`logs/15-mutmut-show.txt`](logs/15-mutmut-show.txt)
+  - `git status --short` → limpio salvo la evidencia: no hubo cambios de código.
+- **Captura:** ![Resultados de mutmut](capturas/P15-mutmut-antes.png)
+- **Commit:** `pendiente`
+
+## Paso P16 — Matar mutantes supervivientes
+
+- **Prompt usado:**
+
+  ```text
+  Escribe los tests que matan los mutantes clasificados como "matar con un test".
+  Cada test debe nombrar el criterio que protege. No modifiques el código de
+  producción. Ejecuta de nuevo mutmut (o la mutación manual) y muéstrame la tabla
+  antes/después: total, muertos, vivos y equivalentes; y la cobertura con ramas.
+  ```
+
+- **Qué propuso la IA:**
+  - En P15 la categoría "matar con un test" quedó en 0: los 9 supervivientes de
+    `_fingerprint` son equivalentes. La IA no escribió tests, porque ningún test puede
+    hacer fallar un mutante equivalente y uno que solo lo aparentara no protegería ningún
+    criterio.
+  - Volvió a ejecutar mutmut y la cobertura con ramas: mismos resultados, porque ni el
+    código de producción ni los tests cambiaron.
+  - La única forma de reducir supervivientes es un cambio de producción (quitar
+    `include=FINGERPRINT_FIELDS`, que eliminaría los mutantes 3 y 5), fuera de lo permitido
+    en este paso. La IA mantiene la recomendación de conservarlo como guarda de A5.
+  - Sin snippet de código: el paso no añadió ni cambió código.
+
+- **Mutación antes / después:**
+
+  | | Total | Muertos | Vivos | Equivalentes | A matar con test |
+  |---|---|---|---|---|---|
+  | Antes (P15) | 97 | 88 | 9 | 9 | 0 |
+  | Después (P16) | 97 | 88 | 9 | 9 | 0 |
+
+  Puntuación: 90,7 % bruta; 100 % sin contar equivalentes.
+
+- **Cobertura con ramas antes / después:**
+
+  | Ámbito | Antes (P14) | Después (P16) |
+  |---|---|---|
+  | `tasks/` (111 stmts, 22 ramas) | 100 % líneas · 100 % ramas (BrPart 0) | igual |
+  | `core/clock.py` | 100 % | igual |
+  | Total proyecto | 193 stmts, 1 miss · 28 ramas, 0 parciales · 99,55 % | igual |
+  | Tests | 113 passed | 113 passed |
+
+- **Qué acepté / rechacé y por qué:**
+  - Aceptado tras revisar que no había mutantes clasificados como "matar con un test"
+    y que las mediciones antes/después coinciden.
+  - La eliminación de `include=FINGERPRINT_FIELDS` sigue [PENDIENTE] de decisión
+    (cambio de producción, no permitido en este paso).
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `mutmut run` → 97/97: 88 muertos, 9 supervivientes, 0 timeout, 0 sospechosos;
+    reutilizó los resultados en caché porque el código no cambió ("0.00 mutations/second").
+    Log: [`logs/16-mutmut-run.txt`](logs/16-mutmut-run.txt)
+  - `mutmut results` → los mismos 9 supervivientes de P15.
+    Log: [`logs/16-mutmut-despues.txt`](logs/16-mutmut-despues.txt)
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 113 passed, cobertura 99,55 %;
+    `tasks/` y `core/clock.py` al 100 %. Log: [`logs/16-cobertura.txt`](logs/16-cobertura.txt)
+- **Captura:** ![Resultados de mutmut después](capturas/P16-mutmut-despues.png)
+- **Commit:** `pendiente`
+
+## Paso P17a — Preparación del caso de debugging
+
+- **Prompt usado:**
+
+  ```text
+  Prepara el caso de debugging del reto, con honestidad:
+  1. Revisa @docs/evidencia/bitacora.md (P5–P16): ¿hubo algún fallo real (tests en rojo
+     inesperados, comodín de "tests en rojo", errores 500, tests inestables)?
+  2. Si lo hubo, recréalo temporalmente en el working tree revirtiendo SOLO su fix.
+  3. Si no lo hubo, reprodúcelo a propósito desde un estado realista: quita la limpieza de
+     las claves de idempotencia en tasks.repository.reset(). Ejecuta pytest -q; si ningún
+     test falla con ese cambio, revierte y usa en su lugar la comparación de due_date
+     invertida a `<=` en tasks/service.py.
+  4. Confirma que pytest -q falla. No hagas commit ni arregles nada.
+  Dime en una línea qué opción usaste (real o reproducido) y qué cambiaste.
+  ```
+
+- **Qué propuso la IA:**
+  - **El bug es REAL, no reproducido a propósito.** En la bitácora,
+    `test_ca17[2026-10-20T00:00:00]` siguió en rojo de P6 a P9 como "regla pendiente"
+    (logs 07, 08 y 09) sin que ningún incremento lo planificara. Era un comodín de "tests en
+    rojo": Pydantic, en modo laxo, acepta `"2026-10-20T00:00:00"` como `date`, y CA-17 y la
+    decisión 4 solo admiten `YYYY-MM-DD`. En P10 se detectó como "incumplimiento 1" y se
+    arregló en el commit `4a55657`.
+  - Otros candidatos descartados:
+    - El rojo de `Field(strict=True)` en P10 (8 tests) nunca llegó a commit, así que no
+      hay fix aislado que revertir.
+    - No hubo errores 500 ni tests inestables (P13: dos ejecuciones con el mismo resultado).
+  - No hizo falta la opción reproducida (`reset()` sin limpiar claves, ni `<` → `<=`).
+  - **Qué se cambió:** en el working tree se revirtió solo el fix de `4a55657` en
+    `tasks/schemas.py` (`git show 4a55657 -- tasks/schemas.py | git apply -R`). Se quitaron
+    el validador `require_date_only`, `DATE_ONLY_PATTERN` e `import re`, y volvió el
+    `# TODO(CA-17)`. Sin commit y sin arreglo.
+
+  ```diff
+  -    @field_validator("due_date", mode="before")
+  -    @classmethod
+  -    def require_date_only(cls, value: object) -> object:
+  -        """Solo acepta `YYYY-MM-DD`: sin hora, aunque sea 00:00:00 (CA-17)."""
+  -        if value is None or isinstance(value, date):
+  -            return value
+  -        if not isinstance(value, str) or not DATE_ONLY_PATTERN.fullmatch(value):
+  -            raise ValueError("la fecha límite debe tener el formato YYYY-MM-DD")
+  -        # Pydantic valida después que sea una fecha real (p. ej. rechaza 2026-02-30).
+  -        return value
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan: recrear el fallo real en lugar de uno fabricado, porque el reto pide
+    honestidad y la bitácora documenta ese rojo.
+  - Aceptado tras revisar que `git diff` solo toca `tasks/schemas.py` (aparte de la
+    bitácora) y que falla un único test, el esperado.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` (ejecutado en el paso, sin log guardado) → 1 failed, 112 passed:
+    `FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]`
+    con `assert 201 == 422`.
+  - `git diff -- tasks/schemas.py` → 1 inserción y 13 borrados, solo en `tasks/schemas.py`.
+    Se limitó la ruta porque un `git diff` completo incluiría también las entradas de
+    P15–P16 de la bitácora, aún sin commitear.
+    Log: [`logs/17a-diff-bug.txt`](logs/17a-diff-bug.txt)
+- **Captura:** N/A
+- **Commit:** `pendiente` (el bug recreado no se commitea)
+
+## Paso P17 — Reproducir y presentar el bug
+
+- **Prompt usado:**
+
+  ```text
+  Ejecuta pytest -q. Tengo un fallo. Te lo presento:
+  - Qué esperaba: que toda la suite pase y que cada test cumpla su criterio CA-XX de
+    @docs/feature-tasks.md partiendo de un estado limpio (fixture autouse de reset).
+  - Qué pasó: el stack trace COMPLETO de la salida de pytest (léelo entero, no solo la
+    última línea).
+  - Cómo reproducirlo: pytest -q, y después el nodo exacto del primer test que falla
+    (pytest <archivo>::<test> -q).
+  - Contexto: @tasks/service.py @tasks/repository.py @tests/conftest.py @core/clock.py.
+
+  Primero resume qué está pasando y en qué línea de MI código empieza el problema
+  (ignora los frames de FastAPI/Starlette). Después dame 2–3 hipótesis de la causa,
+  de más a menos probable, y cómo confirmar cada una. No cambies código todavía.
+  ```
+
+- **Qué propuso la IA:**
+  - Ejecutó `pytest -q` y el nodo aislado: falla solo
+    `test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]`
+    con `assert 201 == 422`. Los otros 3 valores de CA-17 sí dan 422.
+  - **Frames de mi código en el trace** (el trace no tiene frames de FastAPI/Starlette; es
+    un fallo de aserción, no una excepción):
+    - `tests/test_tasks.py:254` → `response = _post(client, body)` con
+      `body = {"title": "Revisar backups", "due_date": "2026-10-20T00:00:00"}`.
+    - `tests/test_tasks.py:256` → `assert response.status_code == 422` →
+      `AssertionError: assert 201 == 422`.
+  - **Dónde empieza el problema:** `tasks/schemas.py:20`, `due_date: date | None = None`
+    sin validador. Falta `require_date_only` (`field_validator("due_date", mode="before")`);
+    en su lugar queda un `# TODO(CA-17)`. Service, repository, conftest y clock no intervienen.
+  - **Hipótesis, de más a menos probable:**
+    1. **Falta el validador de formato en `schemas.py` y Pydantic v2 (modo laxo) acepta un
+       datetime con hora exactamente 00:00:00 como `date`.** Explica que solo falle
+       `T00:00:00` y no `T10:00:00`. Cómo confirmarla: instanciar
+       `TaskCreate(title="abc", due_date=<valor>)` con cada valor de CA-17, y revisar
+       `git diff tasks/schemas.py`. → **Confirmada**: con `T00:00:00` devuelve
+       `2026-10-20`; los otros tres lanzan `ValidationError`.
+    2. **Estado no aislado entre tests (fallo de `reset()` / fixture autouse).** Cómo
+       confirmarla: ejecutar el nodo aislado. → **Descartada**: falla igual en aislamiento,
+       y un 201 en lugar de un 422 de forma no lo explica el estado residual.
+    3. **El mock del reloj (`core.clock.today`) no se aplica.** Cómo confirmarla: comprobar
+       CA-15, CA-16 y CA-19, que dependen del reloj. → **Descartada**: pasan, y
+       `2026-10-20` es "hoy" en el mock, así que la regla de fecha pasada no lo rechazaría.
+  - **Arreglo propuesto** (no aplicado): restaurar `require_date_only` en `tasks/schemas.py`
+    (regex `[0-9]{4}-[0-9]{2}-[0-9]{2}` con `fullmatch`) y quitar el TODO.
+
+  ```text
+  >       assert response.status_code == 422
+  E       assert 201 == 422
+  E        +  where 201 = <Response [201 Created]>.status_code
+
+  tests/test_tasks.py:256: AssertionError
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan de diagnóstico. El arreglo queda pendiente, porque el prompt pedía
+    no cambiar código todavía; no se tocó código.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 1 test en rojo (`F`) de 113, el esperado de CA-17 (`assert 201 == 422`).
+    La salida guardada no incluye la línea de recuento `N failed, M passed`.
+    Log: [`logs/17-bug-trace.txt`](logs/17-bug-trace.txt)
+- **Captura:** ![Trace del bug de CA-17](capturas/P17-bug-trace.png)
+- **Commit:** `pendiente`
+
+## Paso P18 — Confirmación de la hipótesis
+
+- **Prompt usado:**
+
+  ```text
+  Ejecuta la confirmación que propusiste para la hipótesis 1 (print temporal, test
+  focalizado o lectura del código), muéstrame la salida observada y dime si la confirma
+  o la descarta. Si la descarta, haz lo mismo con la hipótesis 2 y luego con la 3.
+  Retira cualquier print o cambio temporal que hayas añadido. No corrijas el bug todavía.
+  ```
+
+- **Qué propuso la IA:**
+  - **Hipótesis evaluada: solo la 1.** Falta el validador de formato de `due_date` en
+    `tasks/schemas.py` y Pydantic v2, en modo laxo, acepta un datetime con hora
+    exactamente 00:00:00 como `date`.
+  - **Cómo se confirmó:** sin prints ni cambios temporales; todo de solo lectura.
+    1. Lectura del código: `git diff --stat -- tasks/schemas.py` (1 inserción, 13 borrados)
+       y `grep` en `tasks/schemas.py`. No quedan `require_date_only` ni `DATE_ONLY_PATTERN`;
+       solo el `TODO(CA-17)` (línea 19) y `due_date: date | None = None` (línea 20).
+    2. Prueba focalizada con `python -I -c`, sin escribir archivos: se instanció
+       `TaskCreate` con los cuatro valores de CA-17 y uno válido, y se hizo un `POST /tasks`
+       con `TestClient`.
+  - **Resultado observado:** solo `T00:00:00` se acepta como fecha; con otra hora, Pydantic
+    lo rechaza (`date_from_datetime_inexact`). La API devuelve `201`, lo que coincide con el
+    `assert 201 == 422` del test.
+
+    ```text
+    Schema TaskCreate (due_date):
+      '2026-10-20T00:00:00'    -> aceptado como datetime.date(2026, 10, 20)
+      '2026-10-20T10:00:00'    -> rechazado: date_from_datetime_inexact
+      '20/10/2026'             -> rechazado: date_from_datetime_parsing
+      '2026-02-30'             -> rechazado: date_from_datetime_parsing
+      '2026-10-20'             -> aceptado como datetime.date(2026, 10, 20)
+    API POST /tasks con due_date=2026-10-20T00:00:00 -> 201 2026-10-20
+    ```
+
+  - **Hipótesis confirmada: la 1.** Las hipótesis 2 (estado no aislado entre tests) y 3 (mock
+    del reloj sin aplicar) no se volvieron a evaluar, porque el prompt solo lo pedía si la 1
+    quedaba descartada. Ya se habían descartado en P17.
+  - No hubo cambios temporales que retirar. El bug sigue sin corregir.
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan de confirmación. El arreglo (restaurar `require_date_only`) queda
+    pendiente, porque el prompt pedía no corregir el bug todavía.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:** ninguna en este paso. Las comprobaciones de la confirmación se
+  ejecutaron, pero no se guardó log.
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P19a — Test de regresión en rojo
+
+- **Prompt usado:**
+
+  ```text
+  Con la hipótesis confirmada, escribe primero un test de regresión que falle con el
+  código actual (nombre: test_regresion_<descripcion>), en el archivo de tests que
+  corresponda. Ejecútalo solo y muéstrame que falla por la causa confirmada.
+  No cambies código de producción.
+  ```
+
+- **Qué propuso la IA:**
+  - Un test nuevo, `test_regresion_fecha_limite_con_hora_a_medianoche_devuelve_422`, en
+    `tests/test_tasks.py` (sección `due_date`, justo después del test de CA-17).
+  - Aísla el caso concreto del bug: `due_date` `"2026-10-20T00:00:00"`, con la hora
+    exactamente a medianoche.
+  - Además del 422, comprueba que el error se debe a `due_date`
+    (`loc == ["body", "due_date"]`) y que no se creó ninguna tarea (`GET /tasks` → `[]`).
+  - Sigue el estilo del archivo: arrange / act / assert, helper `_post` y fixture `client`.
+    Lleva un comentario en lugar de docstring, como los demás tests.
+  - No se tocó código de producción.
+
+  ```python
+  def test_regresion_fecha_limite_con_hora_a_medianoche_devuelve_422(client: TestClient) -> None:
+      # CA-17: Pydantic convierte un datetime a las 00:00:00 en date; aun así no es YYYY-MM-DD.
+      body = {"title": "Revisar backups", "due_date": "2026-10-20T00:00:00"}
+
+      response = _post(client, body)
+
+      assert response.status_code == 422
+      assert response.json()["detail"][0]["loc"] == ["body", "due_date"]
+      assert client.get("/tasks").json() == []
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan del test. Aceptado tras revisar que falla por la causa confirmada en P18
+    (`assert 201 == 422`) y que el único archivo nuevo modificado es `tests/test_tasks.py`.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q -k test_regresion` → 1 test en rojo (`F`):
+    `FAILED tests/test_tasks.py::test_regresion_fecha_limite_con_hora_a_medianoche_devuelve_422`,
+    con `assert 201 == 422` en `tests/test_tasks.py:266`.
+    Log: [`logs/19-regresion-rojo.txt`](logs/19-regresion-rojo.txt)
+  - `ruff check tests/test_tasks.py` (sin log guardado) → `All checks passed!`
+- **Captura:** ![Test de regresión en rojo](capturas/P19-regresion-rojo.png)
+- **Commit:** `pendiente`
+
+## Paso P19 — Fix mínimo + test de regresión
+
+- **Prompt usado:**
+
+  ```text
+  Aplica el FIX MÍNIMO que corrige la causa confirmada. No refactorices, no cambies
+  otros tests y no relajes validaciones. Ejecuta el test de regresión, la suite completa
+  (pytest -q) y ruff check ., y muéstrame el diff del fix.
+  ```
+
+- **Qué propuso la IA:**
+  - Fix solo en `tasks/schemas.py`: vuelve el validador `require_date_only`
+    (`field_validator("due_date", mode="before")`), con `DATE_ONLY_PATTERN` e `import re`.
+    Se quita el `# TODO(CA-17)`.
+  - El validador exige `fullmatch` contra `[0-9]{4}-[0-9]{2}-[0-9]{2}`. Pydantic sigue
+    comprobando después que la fecha exista (`2026-02-30` → 422), y el service que no sea
+    pasada. Es un rechazo añadido; no se relaja nada.
+  - Sin refactorizar ni tocar tests. El test de regresión de P19a pasa a verde, igual que
+    el caso `T00:00:00` de CA-17.
+  - El archivo queda idéntico al del commit `4a55657` (`git diff HEAD -- tasks/schemas.py`
+    vacío). El diff del fix se sacó con `diff -u` contra una copia del archivo con el bug,
+    guardada antes de editar.
+
+  Diff del fix (`tasks/schemas.py`, con bug → corregido):
+
+  ```diff
+  +import re
+   from datetime import date, datetime
+  @@
+   TITLE_MAX_LENGTH = 120
+  +DATE_ONLY_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+  @@
+       priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
+  -    # TODO(CA-17): solo formato YYYY-MM-DD y fecha real (sin hora).
+       due_date: date | None = None
+  @@
+  +    @field_validator("due_date", mode="before")
+  +    @classmethod
+  +    def require_date_only(cls, value: object) -> object:
+  +        """Solo acepta `YYYY-MM-DD`: sin hora, aunque sea 00:00:00 (CA-17)."""
+  +        if value is None or isinstance(value, date):
+  +            return value
+  +        if not isinstance(value, str) or not DATE_ONLY_PATTERN.fullmatch(value):
+  +            raise ValueError("la fecha límite debe tener el formato YYYY-MM-DD")
+  +        # Pydantic valida después que sea una fecha real (p. ej. rechaza 2026-02-30).
+  +        return value
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan del fix mínimo.
+  - Pedí revisar el parche contra tres criterios de rechazo: cambiar tests existentes,
+    tocar archivos ajenos a la causa y relajar validaciones. Cumplía los tres, así que se
+    aceptó sin descartar nada.
+
+- **Iteraciones:**
+
+  ```text
+  Revisa tu parche: si cambia algún test existente para que pase, toca archivos que no
+  tienen que ver con la causa o relaja una validación, recházalo y rehazlo como fix
+  mínimo; dime qué descartaste. Si cumple, confírmamelo en una línea.
+  ```
+  → La IA revisó `git status` y `git diff --numstat`:
+    - código de producción: solo `tasks/schemas.py`;
+    - `tests/test_tasks.py`: 11 líneas añadidas (el test de regresión) y 0 borradas,
+      sin ningún test existente modificado;
+    - el validador solo añade un rechazo.
+  → Sin ajustes: el parche se confirmó tal cual.
+
+- **Validación:**
+  - `pytest -q -k test_regresion` (sin log guardado) → el test de regresión pasa.
+  - `pytest -q` → 114 tests en verde, ninguno en rojo. La salida no incluye la línea de
+    recuento; el total sale de los puntos de progreso.
+    Log: [`logs/19-fix-verde.txt`](logs/19-fix-verde.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/19-ruff.txt`](logs/19-ruff.txt)
+- **Captura:** ![Suite en verde tras el fix](capturas/P19-fix-verde.png)
+- **Commit:** `test(tasks): due_date con hora 00:00:00 aceptada como fecha + test de regresión`

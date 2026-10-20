@@ -257,6 +257,17 @@ def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
     assert isinstance(response.json()["detail"], list)
 
 
+def test_regresion_fecha_limite_con_hora_a_medianoche_devuelve_422(client: TestClient) -> None:
+    # CA-17: Pydantic convierte un datetime a las 00:00:00 en date; aun así no es YYYY-MM-DD.
+    body = {"title": "Revisar backups", "due_date": "2026-10-20T00:00:00"}
+
+    response = _post(client, body)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "due_date"]
+    assert client.get("/tasks").json() == []
+
+
 @pytest.mark.parametrize(
     "body",
     [{"title": "Revisar backups"}, {"title": "Revisar backups", "due_date": None}],
