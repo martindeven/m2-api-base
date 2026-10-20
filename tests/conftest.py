@@ -3,15 +3,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-from users import repository
+from tasks import repository as tasks_repository
+from users import repository as users_repository
 
 
 @pytest.fixture(autouse=True)
 def _reset_data():
     """Cada test arranca con los datos semilla y no contamina a los demás."""
-    repository.reset()
+    users_repository.reset()
+    tasks_repository.reset()
     yield
-    repository.reset()
+    users_repository.reset()
+    tasks_repository.reset()
 
 
 @pytest.fixture

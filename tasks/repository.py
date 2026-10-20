@@ -53,5 +53,7 @@ def save_idempotency_key(key: str, fingerprint: str, task: Task) -> None:
 
 def reset() -> None:
     """Vacía tareas y claves de idempotencia. Se usa entre tests."""
-    # TODO(CA-42): limpiar _tasks y _idempotency_keys y reiniciar _next_id.
-    raise NotImplementedError
+    global _next_id
+    _tasks.clear()
+    _idempotency_keys.clear()
+    _next_id = 1

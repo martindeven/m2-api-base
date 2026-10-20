@@ -561,3 +561,149 @@
     está montado. Log: [`logs/04-tests.txt`](logs/04-tests.txt)
 - **Captura:** N/A
 - **Commit:** `feat(tasks): esqueleto del recurso`
+
+## Paso P5 — Test-first: tests de aceptación en rojo
+
+- **Prompt usado:**
+
+  ```text
+  Escribe tests/test_tasks.py a partir de los criterios de @docs/feature-tasks.md,
+  NO del código. Sigue el estilo de @tests/test_users.py y reutiliza @tests/conftest.py
+  (no inventes fixtures paralelas).
+
+  Reglas:
+  - Un test por criterio CA-XX, con nombre descriptivo en español que incluya el id
+    (p. ej. test_ca03_titulo_con_solo_espacios_devuelve_422).
+  - Arrange / act / assert separados por una línea en blanco.
+  - Aserciones específicas: status code + el campo del cuerpo que demuestra el criterio
+    (nada de `is not None` como única aserción).
+  - Para la fecha, NO dependas del día real: fija "hoy" con monkeypatch sobre
+    core.clock.today (p. ej. 2026-01-15) y prueba ayer (422), hoy (201) y mañana (201).
+  - Incluye los límites: title de 2, 3, 120 y 121 caracteres; priority 0, 1, 5, 6 y
+    "alta"; assignee_id inexistente; idempotencia (misma clave y mismo cuerpo, misma
+    clave y cuerpo distinto, sin clave).
+
+  Añade al conftest la fixture que resetee también el repositorio de tasks. Si
+  tasks.repository.reset() aún lanza NotImplementedError, implementa SOLO reset() para no
+  romper los tests de users. No implementes nada más en tasks/. Ejecuta pytest y
+  muéstrame que los tests nuevos fallan por la razón correcta (NotImplementedError o 404
+  de ruta inexistente), no por errores de sintaxis, y que los de users siguen en verde.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) con los 43 tests, uno por CA. Los CA con varios valores usan
+    `@pytest.mark.parametrize`, lo que da 81 casos.
+  - Implementar solo `tasks.repository.reset()`, que vacía las tareas y las claves y
+    reinicia `_next_id`.
+  - Ampliar la fixture autouse `_reset_data` de `tests/conftest.py` para que resetee `users`
+    y `tasks`, sin fixtures paralelas.
+  - Fijar "hoy" en `2026-10-20` (la fecha de los criterios, en lugar de la `2026-01-15` del
+    ejemplo) con una fixture autouse en `test_tasks.py`; CA-19 la cambia a `2026-10-21`.
+  - Comprobar los 404 de dominio con el texto `"no encontrado"`, para que no pasen con el
+    404 genérico `"Not Found"` mientras el router no está montado.
+  - Mantener el router fuera de `main.py`: todos los tests de tasks fallan con 404 de ruta.
+
+  ```python
+  TODAY = date(2026, 10, 20)
+
+
+  @pytest.fixture(autouse=True)
+  def _fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
+      """Los criterios con fecha parten de hoy = 2026-10-20 (UTC)."""
+      monkeypatch.setattr("core.clock.today", lambda: TODAY)
+
+
+  def test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto(client: TestClient) -> None:
+      body = {"title": "Revisar backups", "due_date": "2026-10-19"}
+
+      response = _post(client, body)
+
+      assert response.status_code == 422
+      assert "anterior a hoy" in response.json()["detail"]
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan antes de que se escribiera código.
+  - Acepté fijar "hoy" en `2026-10-20` en lugar de `2026-01-15`, para que los valores de los
+    tests coincidan con los de los criterios. Es una decisión propuesta por la IA y aceptada.
+  - Acepté que el router siga fuera de `main.py`, de modo que la razón del rojo sea el 404 de
+    ruta inexistente.
+  - Antes de dar los tests por buenos pedí una verificación (cobertura CA → test, límites a
+    ambos lados y que no se use la fecha real), para vigilar la señal de alarma de test-first:
+    que los tests salgan del código y no de los criterios.
+
+- **Iteraciones:**
+
+  ```text
+  Antes de dar los tests por buenos, verifica: (1) cada CA-XX de @docs/feature-tasks.md
+  tiene al menos un test que lo nombra; dame la tabla CA → test; (2) los límites están a
+  ambos lados (ayer/hoy, 2/3 y 120/121 caracteres, priority 0/1 y 5/6); (3) ningún test
+  usa la fecha real. Añade lo que falte sin implementar código de producción y vuelve a
+  ejecutar pytest -q.
+  ```
+
+  → La IA cruzó con un script los 43 `CA-XX —` de la especificación con las funciones
+  `test_caXX_` y no faltaba ninguno. Confirmó los límites a ambos lados: fecha
+  `2026-10-19`/`2026-10-20`/`2026-10-21`, `title` 2/3 y 120/121, `priority` 0/1 y 5/6, y
+  además `description` 1000/1001, clave 1/64 frente a vacía/65 y `assignee_id` 0/1. Con
+  `grep` comprobó que no hay `date.today`, `datetime.now`, `utcnow` ni `time.time` en `tests/`.
+  → Ajuste: ninguno; no faltaba nada. Se repitió `pytest -q` con el mismo resultado.
+
+  **Tabla CA → test** (`tests/test_tasks.py`):
+
+  | CA | Test |
+  |---|---|
+  | CA-01 | `test_ca01_creacion_minima_devuelve_201_con_valores_por_defecto` |
+  | CA-02 | `test_ca02_creacion_completa_devuelve_los_valores_enviados` |
+  | CA-03 | `test_ca03_ignora_campos_del_servidor_y_desconocidos` |
+  | CA-04 | `test_ca04_titulo_se_recorta` |
+  | CA-05 | `test_ca05_titulo_en_los_limites_3_y_120_devuelve_201` |
+  | CA-06 | `test_ca06_titulo_corto_o_vacio_devuelve_422` |
+  | CA-07 | `test_ca07_titulo_de_121_caracteres_devuelve_422` |
+  | CA-08 | `test_ca08_titulo_ausente_o_no_texto_devuelve_422` |
+  | CA-09 | `test_ca09_descripcion_se_guarda_tal_cual` |
+  | CA-10 | `test_ca10_descripcion_omitida_o_null_se_guarda_null` |
+  | CA-11 | `test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido` |
+  | CA-12 | `test_ca12_prioridad_por_defecto_3_y_limites_1_y_5` |
+  | CA-13 | `test_ca13_prioridad_fuera_de_rango_devuelve_422` |
+  | CA-14 | `test_ca14_prioridad_no_entera_estricta_devuelve_422` |
+  | CA-15 | `test_ca15_fecha_limite_hoy_o_futura_devuelve_201` |
+  | CA-16 | `test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto` |
+  | CA-17 | `test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422` |
+  | CA-18 | `test_ca18_fecha_limite_omitida_o_null_se_guarda_null` |
+  | CA-19 | `test_ca19_la_referencia_es_el_reloj_del_servidor` |
+  | CA-20 | `test_ca20_responsable_existente_devuelve_201` |
+  | CA-21 | `test_ca21_responsable_inexistente_devuelve_404` |
+  | CA-22 | `test_ca22_responsable_con_forma_invalida_devuelve_422` |
+  | CA-23 | `test_ca23_responsable_null_explicito_queda_sin_responsable` |
+  | CA-24 | `test_ca24_la_forma_gana_al_responsable_inexistente` |
+  | CA-25 | `test_ca25_la_fecha_pasada_gana_al_responsable_inexistente` |
+  | CA-26 | `test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea` |
+  | CA-27 | `test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado` |
+  | CA-28 | `test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409` |
+  | CA-29 | `test_ca29_un_fallo_no_guarda_la_clave` |
+  | CA-30 | `test_ca30_cuerpo_invalido_con_clave_usada_devuelve_422` |
+  | CA-31 | `test_ca31_la_clave_distingue_mayusculas` |
+  | CA-32 | `test_ca32_longitud_de_la_clave_entre_1_y_64` |
+  | CA-33 | `test_ca33_sin_clave_no_hay_deduplicacion` |
+  | CA-34 | `test_ca34_listado_vacio_devuelve_lista_vacia` |
+  | CA-35 | `test_ca35_listado_completo_ordenado_por_id` |
+  | CA-36 | `test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas` |
+  | CA-37 | `test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia` |
+  | CA-38 | `test_ca38_filtro_no_entero_devuelve_422` |
+  | CA-39 | `test_ca39_consultar_tarea_existente_devuelve_la_misma_tarea` |
+  | CA-40 | `test_ca40_consultar_tarea_inexistente_devuelve_404` |
+  | CA-41 | `test_ca41_task_id_no_entero_devuelve_422` |
+  | CA-42 | `test_ca42_reset_limpia_tareas_y_claves` |
+  | CA-43 | `test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista` |
+
+- **Validación:**
+  - `pytest -q` → 81 casos de `tests/test_tasks.py` en rojo (43 tests) y 6 de `users` en
+    verde. Todos los rojos se deben al 404 de ruta inexistente: `assert 404 == 422` (38),
+    `assert 404 == 201` (31), `assert 404 == 200` (6), `'no encontrado' in 'Not Found'` (4),
+    `{'detail': 'Not Found'} == []` (1) y `KeyError: 'id'` porque el cuerpo del 404 no trae
+    `id` (1). No hay errores de colección, `SyntaxError` ni `ImportError`.
+    Log: [`logs/05-tests-rojos.txt`](logs/05-tests-rojos.txt)
+  - `ruff check .` → `All checks passed!` (ejecutado en el paso; sin log propio).
+- **Captura:** ![Tests de aceptación en rojo](capturas/P05-tests-rojos.png)
+- **Commit:** `test(tasks): tests de aceptación (rojo)`
