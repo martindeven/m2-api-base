@@ -7,3 +7,5 @@ htmlcov/
 .coverage
 .env
 .DS_Store
+mutants/
+.mutmut-cache

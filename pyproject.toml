@@ -24,3 +24,19 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI usa llamadas en los defaults de los parámetros a propósito.
 extend-immutable-calls = ["fastapi.Query", "fastapi.Path", "fastapi.Body", "fastapi.Header", "fastapi.Depends"]
+
+[tool.coverage.run]
+branch = true
+# "main" no es un directorio: coverage lo resuelve como módulo importable (main.py).
+source = ["core", "users", "tasks", "main"]
+omit = ["tests/*", "legacy/*", "migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.mutmut]
+# Sintaxis de mutmut 3.8: source_paths (paths_to_mutate está deprecado).
+source_paths = ["tasks/", "core/clock.py"]
+# tests/ y pyproject.toml se copian por defecto; esto es lo que los tests importan además.
+also_copy = ["core/", "users/", "main.py"]

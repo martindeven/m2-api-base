@@ -1143,3 +1143,69 @@
   - ![Swagger con los endpoints de tasks](capturas/P10-swagger.png)
   - ![Respuestas 201 y 200 de los curl](capturas/P10-curl.png)
 - **Commit:** `chore(tasks): integración y linting`
+
+## Paso P11 — Configuración de cobertura y mutación
+
+- **Prompt usado:**
+
+  ```text
+  Configura @pyproject.toml para medir bien la cobertura y la mutación:
+  - [tool.coverage.run]: branch = true, source = ["core", "users", "tasks"] más main.py
+    (o el equivalente) y omite tests/, legacy/ y migrations/.
+  - [tool.coverage.report]: show_missing = true y fail_under = 90.
+  - Añade mutmut a requirements.txt e instálalo. Comprueba la versión instalada
+    (mutmut --version) y usa la sintaxis de configuración de ESA versión para mutar solo
+    tasks/ y core/clock.py; si necesita copiar otros paquetes para correr los tests
+    (core/, users/, main.py), configúralo.
+  - Añade a .gitignore los artefactos de mutmut (p. ej. mutants/ o .mutmut-cache) y
+    verifica que htmlcov/ y .coverage ya están.
+  Muéstrame el diff y ejecuta pytest --cov --cov-report=term-missing para ver la línea base.
+  ```
+
+- **Qué propuso la IA:**
+  - `[tool.coverage.run]` con `branch = true`, `source = ["core", "users", "tasks", "main"]`
+    (`main` se resuelve como módulo importable, equivalente a `main.py`) y `omit` de
+    `tests/*`, `legacy/*` y `migrations/*`.
+  - `[tool.coverage.report]` con `show_missing = true` y `fail_under = 90`.
+  - `mutmut>=3.8` en `requirements.txt`; versión instalada 3.8.0.
+  - Al revisar el código de mutmut 3.8.0 instalado, la IA vio que `paths_to_mutate` y
+    `tests_dir` (previstos en su plan inicial) están deprecados: usó `source_paths`, que
+    admite un archivo suelto (`core/clock.py`), y `also_copy` para `core/`, `users/` y
+    `main.py` (`tests/` y `pyproject.toml` se copian por defecto).
+  - `.gitignore`: añadidos `mutants/` y `.mutmut-cache`; `htmlcov/` y `.coverage` ya estaban.
+
+  ```toml
+  [tool.coverage.run]
+  branch = true
+  source = ["core", "users", "tasks", "main"]
+  omit = ["tests/*", "legacy/*", "migrations/*"]
+
+  [tool.coverage.report]
+  show_missing = true
+  fail_under = 90
+
+  [tool.mutmut]
+  source_paths = ["tasks/", "core/clock.py"]
+  also_copy = ["core/", "users/", "main.py"]
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan. El cambio de `paths_to_mutate`/`tests_dir` a `source_paths` se aceptó
+    porque el prompt pedía usar la sintaxis de la versión instalada (3.8.0).
+  - Las líneas sin cubrir (`core/clock.py:16`, cuerpo de `today()`, mockeado en los tests;
+    `main.py:18`, `/health` sin test) quedan anotadas como línea base, sin cambios en este
+    paso: los mutantes de `today()` sobrevivirán en `mutmut run`. [PENDIENTE] decidir si se
+    cubren.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 87 passed, cobertura total
+    99,10 % (umbral 90 % alcanzado); `tasks/` y `users/` al 100 %, `core/clock.py` 80 %
+    (falta línea 16), `main.py` 89 % (falta línea 18).
+    Log: [`logs/11-cobertura-antes.txt`](logs/11-cobertura-antes.txt)
+  - `mutmut --version` → `mutmut, version 3.8.0`.
+    Log: [`logs/11-mutmut-version.txt`](logs/11-mutmut-version.txt)
+  - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
+- **Captura:** N/A
+- **Commit:** `chore: configuración de cobertura de ramas y mutmut`
