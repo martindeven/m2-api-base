@@ -24,8 +24,9 @@ def get_task(task_id: int) -> Task:
 @router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(
     data: TaskCreate,
-    # TODO(CA-32): min_length=1, max_length=64 en el Header.
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(
+        default=None, alias="Idempotency-Key", min_length=1, max_length=64
+    ),
 ) -> Task:
     # TODO(CA-26, CA-27): responder 200 (no 201) en una repetición idempotente.
     return service.create_task(data, idempotency_key)

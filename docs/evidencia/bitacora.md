@@ -795,3 +795,90 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/06-ruff.txt`](logs/06-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `feat(tasks): alta y consulta de tareas (happy path)`
+
+## Paso P7 — Incremental 2: validaciones de forma
+
+- **Prompt usado:**
+
+  ```text
+  Implementa las validaciones de forma en @tasks/schemas.py para los criterios y
+  decisiones de title, priority, description, assignee_id e Idempotency-Key de
+  @docs/feature-tasks.md:
+  - title: strip; 3–120 caracteres tras recortar; solo espacios → 422.
+  - priority: entero 1–5, por defecto 3 (rechaza "alta" y 3.5).
+  - description: opcional, máx. 1000.
+  - assignee_id: entero ≥ 1 si se informa.
+  Usa las herramientas de Pydantic v2 (Field, StringConstraints o field_validator);
+  explícame en 3 líneas por qué elegiste cada una. No toques service ni los tests.
+  Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) con una herramienta de Pydantic v2 por campo y la previsión de qué
+    tests pasarían a verde.
+  - `title`: `field_validator`, que recorta con `str.strip()` de Python (A4) y mide la
+    longitud 3–120 sobre el valor ya recortado. Se descartó
+    `StringConstraints(strip_whitespace=True)` porque recorta en pydantic-core, no con
+    `str.strip()`.
+  - `priority` y `assignee_id`: `Annotated[int, Field(strict=True, ge=..., le=...)]`, para
+    rechazar `3.0`, `"3"` y `true` (decisión 3 y A1). Al ir dentro de `| None`,
+    `assignee_id` sigue aceptando `null`.
+  - `description`: `Field(default=None, max_length=1000)`, sin recorte ni mínimo.
+  - `Idempotency-Key`: `Header(..., min_length=1, max_length=64)` en `tasks/routes.py`, porque
+    es una cabecera y no un campo del cuerpo. La ruta sigue sin lógica.
+
+  ```python
+  class TaskBase(BaseModel):
+      title: str
+      description: str | None = Field(default=None, max_length=1000)
+      priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
+      # TODO(CA-17): solo formato YYYY-MM-DD y fecha real (sin hora).
+      due_date: date | None = None
+      assignee_id: Annotated[int, Field(strict=True, ge=1)] | None = None
+
+      @field_validator("title")
+      @classmethod
+      def strip_title(cls, value: str) -> str:
+          """Recorta con `str.strip()` y mide la longitud ya recortada."""
+          title = value.strip()
+          if not TITLE_MIN_LENGTH <= len(title) <= TITLE_MAX_LENGTH:
+              raise ValueError(...)
+          return title
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan antes de que se escribiera código.
+  - Acepté la validación de `Idempotency-Key` en `tasks/routes.py`, ya que no se puede
+    expresar en `schemas.py`. Es una decisión propuesta por la IA y aceptada.
+  - Decidí que `priority` `3.0` dé 422: el contrato dice "int" y aceptar floats ocultaría
+    errores del cliente, así que `3.5` y `3.0` deben tratarse igual. Pedí modo estricto solo
+    en ese campo y comprobar que un entero normal sigue funcionando y que `true` da 422.
+  - `assignee_id` se mantiene estricto por A1. La IA interpretó "solo en ese campo" como "a
+    nivel de campo y no de modelo" (decisión propuesta por la IA y aceptada).
+
+- **Iteraciones:**
+
+  ```text
+  Decisión: priority 3.0 → 422, porque el contrato dice "int" y aceptar floats ocultaría
+  errores del cliente (3.5 y 3.0 deben tratarse igual). Usa modo estricto solo en ese
+  campo (p. ej. Field(strict=True) o StrictInt) y comprueba que el envío JSON normal con
+  un entero sigue funcionando y que true también da 422. Si no hay un test para 3.0 y
+  para true, añádelos en tests/test_tasks.py con el CA de priority. Vuelve a ejecutar
+  pytest -q y ruff check .
+  ```
+
+  → La IA comprobó que `priority` ya usaba `Field(strict=True)` a nivel de campo, sin
+  `ConfigDict(strict=True)` en el modelo. Con peticiones reales: `3` → 201 con `priority`
+  `3`; `3.0`, `true` y `3.5` → 422 (`int_type`). CA-14 ya incluía `3.0` y `true`, y los 11
+  casos de CA-12/13/14 están en verde.
+  → Ajuste: ninguno; no se añadieron tests ni se cambió código.
+
+- **Validación:**
+  - `pytest -q` → 73 verdes y 14 rojos, con los 6 de `users` en verde. Los 14 rojos son reglas
+    pendientes: fecha pasada (CA-16, 19, 25), `due_date` con `T00:00:00` (CA-17), responsable
+    inexistente (CA-21, CA-29 `tras_404`), idempotencia (CA-26, 27, 28), filtro por
+    responsable (CA-36, 37 → `NotImplementedError`) y CA-43.
+    Log: [`logs/07-tests.txt`](logs/07-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/07-ruff.txt`](logs/07-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `feat(tasks): validación de título, prioridad y descripción`
