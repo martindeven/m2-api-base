@@ -1398,3 +1398,87 @@
   - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
 - **Captura:** N/A
 - **Commit:** `test(tasks): flujo de integración users + tasks`
+
+## Paso P14 — Cerrar huecos de cobertura
+
+- **Prompt usado:**
+
+  ```text
+  Ejecuta pytest --cov --cov-branch --cov-report=term-missing y toma las líneas de
+  tasks/ y core/clock.py con sus columnas Missing y BrPart.
+  Para cada línea o rama faltante dime: qué caso de negocio representa, si vale la
+  pena probarlo o es código muerto, y el test concreto que la cubre. No escribas
+  tests que solo "ejecuten" líneas: cada test debe afirmar un resultado de la
+  especificación. Si encuentras código muerto, elimínalo en lugar de testearlo.
+  Después añade los tests acordados y vuelve a ejecutar la cobertura añadiendo
+  --cov-report=html. Objetivo: >90 % de líneas y de ramas en tasks/.
+  ```
+
+- **Qué propuso la IA:**
+  - Ejecutó la cobertura: `tasks/` ya estaba al 100 % de líneas y ramas (BrPart 0 en todos
+    los archivos). El único hueco del alcance era `core/clock.py:16` (`return now().date()`
+    en `today()`).
+  - Análisis de `core/clock.py:16`:
+    - **Caso de negocio:** decisión 4 de `docs/feature-tasks.md`, "hoy" es la fecha UTC del
+      servidor; es la referencia del 422 por fecha pasada.
+    - **¿Código muerto?** No: `tasks/service.py:35` llama a `clock.today()` en producción.
+      Aparecía sin cubrir porque todos los tests lo sustituyen con monkeypatch.
+    - **¿Vale la pena?** Sí: ningún test comprobaba que `today()` devuelva la fecha UTC de
+      `now()`, y `core/clock.py` está en el alcance de mutmut (P11).
+  - Nuevo `tests/test_clock.py` con 2 tests que fijan solo `core.clock.now` y ejecutan el
+    `today()` real: el último segundo del día UTC sigue siendo ese día, y a medianoche UTC
+    cambia al siguiente.
+  - `main.py:18` (`/health`) queda fuera del alcance pedido y no se toca.
+
+  ```python
+  def test_hoy_es_la_fecha_utc_del_ultimo_segundo_del_dia(monkeypatch: pytest.MonkeyPatch) -> None:
+      # Arrange: en UTC+2 este instante ya sería el día 21.
+      instant = datetime(2026, 10, 20, 23, 59, 59, tzinfo=timezone.utc)
+      monkeypatch.setattr("core.clock.now", lambda: instant)
+
+      # Act
+      today = clock.today()
+
+      # Assert
+      assert today == date(2026, 10, 20)
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan.
+  - Aceptado tras revisar que el test afirma un resultado de la especificación (decisión 4)
+    y no solo ejecuta la línea, y que la cobertura final de `tasks/` y `core/clock.py` es 100 %.
+  - **Código muerto eliminado:** ninguno. No se encontró código muerto en `tasks/` ni en
+    `core/clock.py`.
+  - Primera versión de `tests/test_clock.py` con 2 líneas de más de 100 caracteres (E501 de
+    ruff): se extrajo el instante a una variable `instant`.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Cobertura antes / después (líneas y ramas):**
+
+  | Archivo | P11 (antes) | P13 (antes) | P14 (después) |
+  |---|---|---|---|
+  | `core/clock.py` | 5 stmts, 1 miss (línea 16) · 0 ramas · 80 % | 5 stmts, 1 miss (línea 16) · 0 ramas · 80 % | 5 stmts, 0 miss · 0 ramas · **100 %** |
+  | `tasks/repository.py` | 25 / 0 miss · 0 ramas · 100 % | igual | igual |
+  | `tasks/routes.py` | 15 / 0 miss · 0 ramas · 100 % | igual | igual |
+  | `tasks/schemas.py` | 33 / 0 miss · 6 ramas, 0 parciales · 100 % | igual | igual |
+  | `tasks/service.py` | 38 / 0 miss · 16 ramas, 0 parciales · 100 % | igual | igual |
+  | **`tasks/` (suma)** | 111 stmts, 0 miss · 22 ramas, 0 parciales | igual | igual: **100 % líneas y ramas** |
+  | **Total proyecto** | 193 stmts, 2 miss · 28 ramas, 0 parciales · 99,10 % | igual · 99,10 % | 193 stmts, 1 miss · 28 ramas, 0 parciales · **99,55 %** |
+  | Tests | 87 passed | 111 passed | 113 passed |
+
+  Fuentes: [`logs/11-cobertura-antes.txt`](logs/11-cobertura-antes.txt),
+  [`logs/13-cobertura.txt`](logs/13-cobertura.txt),
+  [`logs/14-cobertura-final.txt`](logs/14-cobertura-final.txt). La línea que falta en el
+  total final es `main.py:18`.
+
+- **Validación:**
+  - `pytest --cov --cov-branch --cov-report=term-missing --cov-report=html` → 113 passed,
+    cobertura total 99,55 % (umbral 90 % alcanzado); `tasks/` y `core/clock.py` al 100 % de
+    líneas y ramas; HTML en `htmlcov/`.
+    Log: [`logs/14-cobertura-final.txt`](logs/14-cobertura-final.txt)
+  - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
+- **Captura:**
+  - ![Informe HTML de cobertura](capturas/P14-cobertura.png)
+  - ![Cobertura en terminal](capturas/P14-cobertura-terminal.png)
+- **Commit:** `test(tasks): cobertura de ramas >90%`
