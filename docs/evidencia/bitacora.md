@@ -320,3 +320,156 @@
 - **Validación:** ninguna (paso de especificación, sin comandos).
 - **Captura:** N/A
 - **Commit:** `docs: especificación y criterios de aceptación de tasks`
+
+## Paso P3 — Convenciones en CLAUDE.md
+
+- **Prompt usado:**
+
+  ```text
+  Actualiza @CLAUDE.md para incorporar el recurso `tasks/` sin romper lo existente:
+  1. En "Estructura", añade `tasks/` con el mismo patrón de 4 archivos y
+     `tests/test_tasks.py`. Añade `core/clock.py` y `docs/` (especificaciones y ADR).
+  2. En "Convenciones", añade:
+     - La lógica que depende de la fecha actual no llama a `date.today()` ni a
+       `datetime.now()` directamente: usa una función de `core/clock.py` para poder
+       mockearla en los tests.
+     - Las validaciones de forma (tipos, rangos, longitudes) van en los schemas
+       Pydantic; las reglas de dominio (fecha pasada, responsable inexistente,
+       idempotencia) van en service.py con core/errors.py.
+     - Un recurso consulta otro recurso a través de su service.py, nunca de su repository.py.
+     - Todo repositorio nuevo expone `reset()` y conftest.py lo invoca.
+     - Docstrings estilo Google en las funciones públicas de service.py.
+  3. En "Cómo ejecutar", añade la cobertura de ramas
+     (`pytest --cov --cov-branch --cov-report=term-missing`) y el mutation testing.
+  4. Añade una sección "Definición de hecho": tests en verde, cobertura >90 % en
+     tasks/, `ruff check .` limpio, docstrings, README y CHANGELOG actualizados.
+
+  Mantén el tono y el formato del archivo y no borres ninguna regla existente.
+  Aplica el cambio y muéstrame el diff.
+  ```
+
+- **Qué propuso la IA:**
+  - En "Estructura" añadió `tasks/` (mismo patrón de 4 archivos), `core/clock.py` como único
+    punto que consulta la fecha del sistema, `docs/` (especificaciones y ADR) y los nombres
+    `test_users.py` y `test_tasks.py` en la línea de `tests/`.
+  - En "Convenciones" añadió las cinco reglas pedidas al final de la lista, sin tocar las existentes.
+  - En "Cómo ejecutar" añadió la cobertura de ramas y `mutmut run` / `mutmut results` para
+    mutation testing. Avisó de que no verificó que `mutmut` esté instalado.
+  - Creó la sección "Definición de hecho" entre "Cómo ejecutar" y "Fuera de límites". Avisó
+    de que `CHANGELOG.md` aún no existe.
+  - Diff de `CLAUDE.md`:
+
+  ```diff
+  diff --git a/CLAUDE.md b/CLAUDE.md
+  index 747ece0..c00e925 100644
+  --- a/CLAUDE.md
+  +++ b/CLAUDE.md
+  @@ -11,8 +11,13 @@ el proyecto corre sin infraestructura.
+     - `service.py` — lógica de negocio. Única capa que habla con `repository.py`.
+     - `schemas.py` — modelos Pydantic de entrada (`*Create`) y salida.
+     - `repository.py` — acceso a datos (aquí, un `dict` en memoria).
+  +- `tasks/` — tareas de equipo. Mismo patrón de 4 archivos que `users/`
+  +  (`routes.py`, `service.py`, `schemas.py`, `repository.py`).
+   - `core/errors.py` — catálogo de errores. Toda respuesta de error sale de aquí.
+  -- `tests/` — un archivo por recurso: `test_<recurso>.py`.
+  +- `core/clock.py` — reloj de la aplicación (fecha actual en UTC). Único punto que consulta
+  +  la fecha del sistema.
+  +- `docs/` — especificaciones de features (`feature-<recurso>.md`) y ADR.
+  +- `tests/` — un archivo por recurso: `test_<recurso>.py` (`test_users.py`, `test_tasks.py`).
+   
+   ## Convenciones
+   
+  @@ -25,6 +30,14 @@ el proyecto corre sin infraestructura.
+     feliz y un caso de error.
+   - Rutas específicas antes que rutas con parámetro: `/users/search` debe declararse
+     **antes** de `/users/{user_id}`.
+  +- La lógica que depende de la fecha actual no llama a `date.today()` ni a `datetime.now()`
+  +  directamente: usa una función de `core/clock.py` para poder mockearla en los tests.
+  +- Las validaciones de forma (tipos, rangos, longitudes) van en los schemas Pydantic. Las
+  +  reglas de dominio (fecha pasada, responsable inexistente, idempotencia) van en `service.py`
+  +  con `core/errors.py`.
+  +- Un recurso consulta otro recurso a través de su `service.py`, nunca de su `repository.py`.
+  +- Todo repositorio nuevo expone `reset()` y la fixture autouse de `tests/conftest.py` lo invoca.
+  +- Docstrings estilo Google en las funciones públicas de `service.py`.
+   
+   ## Cómo ejecutar
+   
+  @@ -36,9 +49,22 @@ pip install -r requirements.txt
+   uvicorn main:app --reload          # API en http://127.0.0.1:8000  ·  /docs para el Swagger
+   pytest                             # tests
+   pytest --cov=. --cov-report=term-missing   # cobertura
+  +pytest --cov --cov-branch --cov-report=term-missing   # cobertura de ramas
+   ruff check .                       # linter
+  +mutmut run                         # mutation testing
+  +mutmut results                     # mutantes supervivientes
+   ```
+   
+  +## Definición de hecho
+  +
+  +Un cambio está hecho cuando:
+  +
+  +- `pytest` está en verde.
+  +- La cobertura de `tasks/` supera el 90 % (`pytest --cov=tasks --cov-branch`).
+  +- `ruff check .` está limpio.
+  +- Las funciones públicas de `service.py` tienen docstrings estilo Google.
+  +- `README.md` y `CHANGELOG.md` están actualizados.
+  +
+   ## Fuera de límites
+   
+   - `migrations/` y `legacy/` — no modificar.
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Rechacé la primera ejecución de la IA. Antes de editar, quiso consultar `requirements.txt`
+    y los paquetes instalados (`pip list`) para identificar la herramienta de mutation testing.
+    Interrumpí esa llamada y reenvié la misma petición. Motivo: [PENDIENTE].
+  - Acepté el diff tras revisar que conserva intactas las reglas de `response_model=`, del
+    orden de rutas y de `migrations/` y `legacy/`.
+  - Registré como decisión del paso el patrón de generación (ver sub-sección).
+
+  ### Patrón elegido (1.c)
+
+  - **Patrón:**
+    - Skeleton-first para la estructura: `tasks/schemas.py`, `tasks/repository.py` con
+      `reset()`, `tasks/service.py`, `tasks/routes.py`, `core/clock.py`, router en `main.py`
+      y reset en `conftest.py`.
+    - Seguido de test-first para las reglas.
+    - Todo con cadencia incremental: un criterio por iteración y un commit por paso.
+  - **Justificación:**
+    - Skeleton-first, porque es una feature nueva con varias piezas (schemas, repositorio,
+      service, rutas y reloj) y conviene fijar antes la estructura.
+    - Test-first para las reglas, porque son verificables y están en los criterios CA-XX de
+      `docs/feature-tasks.md`.
+    - Incremental, para que cada paso sea pequeño, revisable y quede en verde.
+  - **Señales de alarma:**
+    - Skeleton-first → que el esqueleto traiga lógica (validaciones, reglas de dominio,
+      idempotencia) en vez de solo firmas, modelos y conexiones entre capas.
+    - Test-first → que los tests se escriban leyendo el código y no los criterios. Cada test
+      debe citar su CA-XX y usar los valores del documento.
+    - Incremental → pasos que mezclen varias reglas, o commits sin tests en verde.
+
+- **Iteraciones:**
+
+  ```text
+  Revisa tu diff: confirma que siguen intactas la regla del orden de rutas, la de
+  migrations/ y legacy/ fuera de límites y la de response_model=. Si alguna se perdió,
+  restáurala.
+  Además, registra como decisión de este paso el patrón de generación elegido:
+  skeleton-first para la estructura (feature nueva con varias piezas: schemas,
+  repositorio, service, rutas y reloj), seguido de test-first para las reglas (son
+  verificables y están en los criterios), todo con cadencia incremental (un criterio por
+  iteración y un commit por paso). Señales de alarma que vigilaré: skeleton-first → que el
+  esqueleto traiga lógica; test-first → que los tests se escriban leyendo el código y no
+  los criterios; incremental → pasos que mezclen varias reglas o commits sin tests en verde.
+  ```
+
+  → La IA comprobó con `grep` que las tres reglas siguen en `CLAUDE.md` (líneas 24, 31-32 y
+  70) y que la única línea borrada del diff es la de `tests/`, reemplazada por una versión
+  ampliada. No restauró nada porque no faltaba nada. Anotó el patrón de generación y sus
+  señales de alarma como decisión del paso.
+  → Ajuste: ninguno en `CLAUDE.md`; el patrón queda registrado en esta entrada.
+- **Validación:** `pytest -q` → 6 tests sin fallos (`......  [100%]`, exit 0); el cambio
+  es solo de documentación y no altera la suite.
+  Log: [`logs/03-tests.txt`](logs/03-tests.txt)
+- **Captura:** N/A
+- **Commit:** `docs(claude): convenciones para el recurso tasks`
