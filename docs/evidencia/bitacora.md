@@ -882,3 +882,80 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/07-ruff.txt`](logs/07-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `feat(tasks): validación de título, prioridad y descripción`
+
+## Paso P8 — Incremental 3: fecha límite y responsable
+
+- **Prompt usado:**
+
+  ```text
+  Implementa en @tasks/service.py las reglas de dominio:
+  - due_date < clock.today() → errors.invalid_request con mensaje en español (422).
+    Hoy es válido.
+  - assignee_id informado que no existe → errors.not_found("usuario", assignee_id) (404).
+    Consulta los usuarios a través de users.service (no del repositorio de users
+    directamente), respetando las capas de @CLAUDE.md.
+  - Filtro GET /tasks?assignee_id=X.
+  Fix mínimo, no toques los tests. Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) que respeta el orden de evaluación del contrato: primero la fecha,
+    después el hueco de la idempotencia y luego el responsable.
+  - Fecha pasada: `data.due_date < clock.today()` lanza
+    `errors.invalid_request("la fecha límite no puede ser anterior a hoy (UTC)")`, el texto
+    de la decisión 17. Hoy es válido porque la comparación es `<`. Se llama a `clock` a
+    través del módulo para que funcione el `monkeypatch`.
+  - Responsable: si llega `assignee_id`, se llama a `users_service.get_user(...)`, que ya lanza
+    `errors.not_found("usuario", id)`. Se reutiliza en lugar de duplicar la regla.
+  - Filtro: `repository.list_by_assignee` con una comprensión de lista sobre `_tasks`, sin
+    consultar `users` (decisión 12). Es el único cambio fuera de `service.py`.
+
+  ```python
+  if data.due_date is not None and data.due_date < clock.today():
+      raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
+  # TODO(CA-26, CA-27, CA-28, CA-30, CA-31, CA-33): si hay clave, buscarla; ...
+  if data.assignee_id is not None:
+      # get_user lanza errors.not_found("usuario", assignee_id) si no existe.
+      users_service.get_user(data.assignee_id)
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan antes de que se escribiera código.
+  - Acepté reutilizar `users_service.get_user` en lugar de llamar a `errors.not_found` a mano:
+    produce el mismo 404 y respeta la capa `service` de `users`. Es una decisión propuesta
+    por la IA y aceptada.
+  - Acepté implementar `list_by_assignee` en `tasks/repository.py`, porque el acceso a datos
+    vive en el repositorio. Es una decisión propuesta por la IA y aceptada.
+  - Pedí verificar las capas, el uso de `core.clock.today()` y que `assignee_id` `None` no
+    consulte `users` antes de dar el paso por bueno.
+
+- **Iteraciones:**
+
+  ```text
+  Verifica y corrige si hace falta: (1) tasks/ no importa users.repository en ningún
+  archivo (muéstrame el grep); (2) la comparación de due_date es entre objetos date
+  usando core.clock.today(), sin date.today() ni datetime.now() en tasks/;
+  (3) assignee_id None no consulta users. Vuelve a ejecutar pytest -q.
+  ```
+
+  → La IA mostró las comprobaciones:
+  - (1) El `grep` de `users.repository` en `tasks/` sale vacío; la única importación de
+    `users` es `from users import service as users_service`.
+  - (2) No hay `date.today`, `datetime.now` ni `utcnow` en `tasks/`. La comparación es
+    `date | None` frente a `clock.today() -> date`.
+  - (3) Un espía sobre `users_service.get_user` registra 0 llamadas con `assignee_id`
+    omitido o `null`, y 1 con `assignee_id` `1`.
+
+  → Ajuste: ninguno. Se repitió `pytest -q` con el mismo resultado.
+
+- **Validación:**
+  - `pytest -q` → 82 verdes y 5 rojos, con los 6 de `users` en verde. Los 5 rojos son reglas
+    pendientes:
+    - Idempotencia: CA-26 y CA-27 (`201 == 200`), CA-28 (`201 == 409`).
+    - CA-43, que depende del 409.
+    - CA-17 con `2026-10-20T00:00:00`, por el formato estricto de `due_date`.
+
+    Log: [`logs/08-tests.txt`](logs/08-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/08-ruff.txt`](logs/08-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `feat(tasks): reglas de fecha límite y responsable`

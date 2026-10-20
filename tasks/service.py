@@ -4,9 +4,12 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es 
 única que conoce `repository.py`, la que consulta `users` a través de su
 `service.py` y la que decide cuándo algo es un error de dominio (`core.errors`).
 """
-from core import errors
+from core import clock, errors
 from tasks import repository
 from tasks.schemas import Task, TaskCreate
+from users import service as users_service
+
+PAST_DUE_DATE_MESSAGE = "la fecha límite no puede ser anterior a hoy (UTC)"
 
 
 def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
@@ -23,14 +26,15 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
         HTTPException: 422 si `due_date` es anterior a hoy (UTC), 409 si la clave ya
             existe con otra huella, 404 si el responsable no existe.
     """
-    # TODO(CA-16, CA-19, CA-25): due_date < clock.today() -> errors.invalid_request(
-    #     "la fecha límite no puede ser anterior a hoy (UTC)").
+    if data.due_date is not None and data.due_date < clock.today():
+        raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
     # TODO(CA-26, CA-27, CA-28, CA-30, CA-31, CA-33): si hay clave, buscarla; misma huella
     #     -> tarea original; huella distinta ->
     #     errors.already_exists("clave de idempotencia", clave). Huella sobre los 5 campos
     #     normalizados (A5).
-    # TODO(CA-20, CA-21, CA-24): si hay assignee_id, comprobarlo vía users.service.get_user
-    #     (404 con errors.not_found).
+    if data.assignee_id is not None:
+        # get_user lanza errors.not_found("usuario", assignee_id) si no existe.
+        users_service.get_user(data.assignee_id)
     # TODO(CA-29): si hay clave, guardarla con su huella solo tras crear.
     return repository.add(
         title=data.title,
@@ -70,6 +74,5 @@ def list_tasks(assignee_id: int | None) -> list[Task]:
     """
     if assignee_id is None:
         return repository.list_all()
-    # TODO(CA-36, CA-37): implementar repository.list_by_assignee (sin comprobar que el
-    #     usuario exista).
+    # Es un filtro: no se comprueba que el usuario exista (decisión 12).
     return repository.list_by_assignee(assignee_id)

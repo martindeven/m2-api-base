@@ -49,8 +49,7 @@ def list_all() -> list[Task]:
 
 
 def list_by_assignee(assignee_id: int) -> list[Task]:
-    # TODO(CA-36, CA-37): tareas de ese responsable, por id ascendente; [] si no hay.
-    raise NotImplementedError
+    return [task for task in _tasks.values() if task.assignee_id == assignee_id]
 
 
 def find_by_idempotency_key(key: str) -> tuple[str, Task] | None:

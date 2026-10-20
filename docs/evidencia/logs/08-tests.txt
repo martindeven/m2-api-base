@@ -1,0 +1,99 @@
+........................................F..............FFF.............. [ 82%]
+........F......                                                          [100%]
+=================================== FAILURES ===================================
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00] _
+
+client = <starlette.testclient.TestClient object at 0x7fdddc0faea0>
+due_date = '2026-10-20T00:00:00'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+_____ test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea _____
+
+client = <starlette.testclient.TestClient object at 0x7fdddc0f2600>
+
+    def test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea(
+        client: TestClient,
+    ) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 1}
+        first = _post(client, body, key="K")
+    
+        repeated = _post(client, body, key="K")
+    
+        assert first.status_code == 201
+>       assert repeated.status_code == 200
+E       assert 201 == 200
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:357: AssertionError
+__________ test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado __________
+
+client = <starlette.testclient.TestClient object at 0x7fdddc0f1a90>
+
+    def test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        repeated = _post(client, {"priority": 3, "title": " Revisar "}, key="K")
+    
+        assert first.status_code == 201
+>       assert repeated.status_code == 200
+E       assert 201 == 200
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:368: AssertionError
+_____________ test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409 _____________
+
+client = <starlette.testclient.TestClient object at 0x7fdddc0f2d20>
+
+    def test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        response = _post(client, {"title": "Otra tarea"}, key="K")
+    
+        assert first.status_code == 201
+>       assert response.status_code == 409
+E       assert 201 == 409
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:379: AssertionError
+__________ test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista ___________
+
+client = <starlette.testclient.TestClient object at 0x7fdddaf631d0>
+
+    def test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista(client: TestClient) -> None:
+        _post(client, {"title": "Revisar"}, key="K")
+    
+        past_date = _post(client, {"title": "Revisar backups", "due_date": "2026-10-19"})
+        missing_assignee = _post(client, {"title": "Revisar backups", "assignee_id": 999})
+        conflict = _post(client, {"title": "Otra tarea"}, key="K")
+        missing_task = client.get("/tasks/999")
+        shape_error = _post(client, {"title": "ab"})
+    
+        assert past_date.status_code == 422
+        assert isinstance(past_date.json()["detail"], str)
+        assert missing_assignee.status_code == 404
+        assert isinstance(missing_assignee.json()["detail"], str)
+>       assert conflict.status_code == 409
+E       assert 201 == 409
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:553: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]
+FAILED tests/test_tasks.py::test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea
+FAILED tests/test_tasks.py::test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado
+FAILED tests/test_tasks.py::test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409
+FAILED tests/test_tasks.py::test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista
