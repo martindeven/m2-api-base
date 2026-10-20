@@ -4,6 +4,8 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es 
 única que conoce `repository.py`, la que consulta `users` a través de su
 `service.py` y la que decide cuándo algo es un error de dominio (`core.errors`).
 """
+from core import errors
+from tasks import repository
 from tasks.schemas import Task, TaskCreate
 
 
@@ -29,9 +31,14 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> Task:
     #     normalizados (A5).
     # TODO(CA-20, CA-21, CA-24): si hay assignee_id, comprobarlo vía users.service.get_user
     #     (404 con errors.not_found).
-    # TODO(CA-01, CA-02, CA-29): crear con repository.add y, si hay clave, guardarla con
-    #     su huella solo tras crear.
-    raise NotImplementedError
+    # TODO(CA-29): si hay clave, guardarla con su huella solo tras crear.
+    return repository.add(
+        title=data.title,
+        description=data.description,
+        priority=data.priority,
+        due_date=data.due_date,
+        assignee_id=data.assignee_id,
+    )
 
 
 def get_task(task_id: int) -> Task:
@@ -46,9 +53,10 @@ def get_task(task_id: int) -> Task:
     Raises:
         HTTPException: 404 si no existe ninguna tarea con ese id.
     """
-    # TODO(CA-39): devolver repository.get(task_id).
-    # TODO(CA-40): si no existe -> errors.not_found("tarea", task_id).
-    raise NotImplementedError
+    task = repository.get(task_id)
+    if task is None:
+        raise errors.not_found("tarea", task_id)
+    return task
 
 
 def list_tasks(assignee_id: int | None) -> list[Task]:
@@ -60,7 +68,8 @@ def list_tasks(assignee_id: int | None) -> list[Task]:
     Returns:
         Lista de tareas; vacía si no hay ninguna (o ninguna coincide con el filtro).
     """
-    # TODO(CA-34, CA-35): sin filtro -> repository.list_all().
-    # TODO(CA-36, CA-37): con filtro -> repository.list_by_assignee(assignee_id),
-    #     sin comprobar que el usuario exista.
-    raise NotImplementedError
+    if assignee_id is None:
+        return repository.list_all()
+    # TODO(CA-36, CA-37): implementar repository.list_by_assignee (sin comprobar que el
+    #     usuario exista).
+    return repository.list_by_assignee(assignee_id)

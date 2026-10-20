@@ -6,6 +6,7 @@ cuerpo y la tarea creada). Solo `service.py` debería usar este módulo.
 """
 from datetime import date
 
+from core import clock
 from tasks.schemas import Task
 
 _tasks: dict[int, Task] = {}
@@ -22,18 +23,29 @@ def add(
     due_date: date | None,
     assignee_id: int | None,
 ) -> Task:
-    # TODO(CA-01, CA-02): id incremental desde 1, status "pending", created_at en UTC.
-    raise NotImplementedError
+    global _next_id
+    task = Task(
+        id=_next_id,
+        title=title,
+        description=description,
+        priority=priority,
+        due_date=due_date,
+        assignee_id=assignee_id,
+        status="pending",
+        created_at=clock.now(),
+    )
+    _tasks[task.id] = task
+    _next_id += 1
+    return task
 
 
 def get(task_id: int) -> Task | None:
-    # TODO(CA-39, CA-40): devolver la tarea o None.
-    raise NotImplementedError
+    return _tasks.get(task_id)
 
 
 def list_all() -> list[Task]:
-    # TODO(CA-34, CA-35): todas las tareas ordenadas por id ascendente.
-    raise NotImplementedError
+    # Ids crecientes + orden de inserción del dict = orden por id (CA-35).
+    return list(_tasks.values())
 
 
 def list_by_assignee(assignee_id: int) -> list[Task]:

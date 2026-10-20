@@ -707,3 +707,91 @@
   - `ruff check .` → `All checks passed!` (ejecutado en el paso; sin log propio).
 - **Captura:** ![Tests de aceptación en rojo](capturas/P05-tests-rojos.png)
 - **Commit:** `test(tasks): tests de aceptación (rojo)`
+
+## Paso P6 — Incremental 1: happy path
+
+- **Prompt usado:**
+
+  ```text
+  Implementa SOLO lo necesario para que pasen los tests del happy path:
+  crear tarea (CA de 201 con status "pending"), GET /tasks/{id} existente e
+  inexistente (404) y GET /tasks. Registra el router en @main.py siguiendo cómo se
+  registra users_router. Implementa core/clock.py (hoy en UTC).
+
+  No implementes validaciones, idempotencia ni assignee todavía. Fix mínimo:
+  no toques los tests. Luego ejecuta pytest -q y ruff check . y dime qué tests pasan
+  y cuáles siguen en rojo (deben ser los de las reglas pendientes).
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) con los cambios mínimos y la previsión de qué tests pasarían a verde
+    y cuáles seguirían en rojo.
+  - Registrar `tasks_router` en `main.py` igual que `users_router`.
+  - En `core/clock.py`, `today()` en UTC y además `now()` para `created_at`, porque
+    `CLAUDE.md` dice que `core/clock.py` es el único punto que consulta la fecha del sistema.
+  - En `tasks/repository.py`, implementar `add` (con `status="pending"`), `get` y `list_all`
+    con el patrón de `users`. `list_by_assignee` y las funciones de idempotencia siguen en
+    `NotImplementedError`.
+  - En `tasks/service.py`, `create_task` delega en `repository.add` sin comprobaciones,
+    `get_task` da 404 con `errors.not_found` y `list_tasks` sin filtro llama a `list_all`.
+  - No tocar `routes.py`, `schemas.py` ni los tests.
+
+  ```python
+  def get_task(task_id: int) -> Task:
+      task = repository.get(task_id)
+      if task is None:
+          raise errors.not_found("tarea", task_id)
+      return task
+
+
+  def list_tasks(assignee_id: int | None) -> list[Task]:
+      if assignee_id is None:
+          return repository.list_all()
+      # TODO(CA-36, CA-37): implementar repository.list_by_assignee (sin comprobar que el
+      #     usuario exista).
+      return repository.list_by_assignee(assignee_id)
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan antes de que se escribiera código.
+  - Acepté añadir `clock.now()`, que no estaba pedido, para cumplir la regla de `CLAUDE.md`
+    sobre el único punto de consulta de la fecha. Es una decisión propuesta por la IA y
+    aceptada.
+  - Acepté que el filtro por responsable siga llamando a `list_by_assignee` sin implementar,
+    para que CA-36/37 queden en rojo con `NotImplementedError` explícito.
+  - Pedí revisar el diff contra cuatro condiciones (ruta sin lógica, 404 desde
+    `core/errors.py`, `reset()` reinicia ids, tests intactos) antes de darlo por bueno.
+
+- **Iteraciones:**
+
+  ```text
+  Revisa tu diff completo y confírmame punto por punto, corrigiendo lo que no cumpla:
+  la ruta no tiene lógica; los 404 salen de core/errors.py; repository.reset() reinicia
+  también el contador de ids; no se tocó ningún test. Vuelve a ejecutar pytest -q.
+  ```
+
+  → La IA confirmó los cuatro puntos:
+  - `tasks/routes.py` no está en el diff y sus rutas son un solo `return service...`.
+  - El único 404 de tasks es `errors.not_found("tarea", task_id)`; no hay ningún
+    `HTTPException` en `tasks/`.
+  - `reset()` pone `_next_id = 1`, y lo confirman CA-01 y CA-42.
+  - `git diff -- tests/` sale vacío.
+
+  → Ajuste: ninguno. Se repitió `pytest -q` con el mismo resultado.
+
+- **Validación:**
+  - `pytest -q` → 48 verdes y 39 rojos, con los 6 de `users` en verde. Los 39 rojos son reglas
+    pendientes:
+    - strip y longitud de `title`.
+    - `description` > 1000.
+    - `priority` estricto y en rango.
+    - Fecha pasada y formato `T00:00:00`.
+    - Responsable.
+    - Idempotencia y longitud de la clave.
+    - Filtro por responsable (`NotImplementedError`).
+    - CA-43.
+
+    Log: [`logs/06-tests.txt`](logs/06-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/06-ruff.txt`](logs/06-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `feat(tasks): alta y consulta de tareas (happy path)`
