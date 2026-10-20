@@ -1209,3 +1209,111 @@
   - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
 - **Captura:** N/A
 - **Commit:** `chore: configuración de cobertura de ramas y mutmut`
+
+## Paso P12 — Tests unitarios del service
+
+- **Prompt usado:**
+
+  ```text
+  Crea tests/test_tasks_service.py con tests UNITARIOS de @tasks/service.py
+  (sin TestClient). Unidad: create_task, get_task, list_tasks.
+  Reglas: las de @docs/feature-tasks.md.
+  Qué es dependencia y qué es lógica:
+  - Dependencias (mockear con monkeypatch): core.clock.today (reloj) y la consulta de
+    usuarios a users.service (I/O simulado).
+  - Lógica bajo prueba (NO mockear): validación de fecha, idempotencia, filtro.
+  Casos (happy path primero, luego edge cases):
+  1. Crea tarea válida → status "pending" e id incremental.
+  2. due_date = ayer → 422; = hoy → OK; = None → OK.
+  3. assignee inexistente → 404 (el mock levanta not_found); assignee None → no consulta usuarios.
+  4. Idempotencia: misma clave y mismo cuerpo → misma tarea y created False;
+     misma clave y otro cuerpo → 409; claves distintas → dos tareas.
+  5. Huella del cuerpo: el mismo contenido con description None frente a omitida (decide
+     el comportamiento esperado y pregúntame si no está en la especificación).
+  6. list_tasks con filtro sin coincidencias → lista vacía.
+  Estilo: AAA con comentarios # Arrange / # Act / # Assert, un caso por test, nombre
+  en español, aserciones específicas (pytest.raises con .value.status_code y el detail).
+  Pregunta de control para cada test: "¿qué mutación no detectaría?". Si encuentras
+  alguno débil, refuérzalo. Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - Nuevo `tests/test_tasks_service.py` con 19 tests (22 casos con la parametrización), sin
+    tocar código de producción.
+  - Dos fixtures autouse con `monkeypatch`: `core.clock.today` fijado en 2026-10-20 y un
+    fake de `users.service.get_user` que registra los ids consultados y levanta
+    `errors.not_found("usuario", id)` fuera de los ids 1–4. El repositorio en memoria es real.
+  - Aserciones exactas de `status_code` y `detail` (`PAST_DUE_DATE_MESSAGE`,
+    `"usuario no encontrado: 999"`, `"clave de idempotencia ya existe: <clave>"`,
+    `"tarea no encontrado: 999"`).
+  - Refuerzos por la pregunta de control: 409 cambiando un solo campo de la huella
+    (parametrizado: description `""` frente a None, priority, due_date, assignee_id),
+    un 404 previo que no reserva la clave (CA-29), filtro con coincidencias y listado sin filtro.
+  - Mutantes equivalentes previstos: `sort_keys` y `ensure_ascii` de `json.dumps` en `_fingerprint`.
+
+  ```python
+  @pytest.mark.parametrize(
+      "changed_field",
+      [
+          {"description": ""},
+          {"priority": 4},
+          {"due_date": TODAY + timedelta(days=1)},
+          {"assignee_id": 2},
+      ],
+      ids=["description_vacia_frente_a_none", "priority", "due_date", "assignee_id"],
+  )
+  def test_misma_clave_cambiando_un_solo_campo_da_409(changed_field: dict) -> None:
+      # Arrange
+      original, _ = service.create_task(TaskCreate(title="Revisar backups"), idempotency_key=KEY)
+      other = TaskCreate(title="Revisar backups", **changed_field)
+
+      # Act
+      with pytest.raises(HTTPException) as error:
+          service.create_task(other, idempotency_key=KEY)
+
+      # Assert
+      assert error.value.status_code == 409
+      assert error.value.detail == f"clave de idempotencia ya existe: {KEY}"
+      assert tasks_repository.list_all() == [original]
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan.
+  - **Decisión (caso 5):** el prompt planteaba qué hacer con `description` None frente a
+    omitida y pedía preguntar si no estaba en la especificación. La IA no preguntó: lo
+    resolvió con `docs/feature-tasks.md` (decisión 2, omitida y null son equivalentes;
+    decisión 8, la huella usa el cuerpo normalizado). Comportamiento esperado: misma huella.
+    Mi respuesta lo fijó como decisión: son el mismo cuerpo; con la misma clave se
+    devuelve la misma tarea, con `created False` y sin 409. El test se deja así. Yo cité
+    las decisiones 3 y 7; la IA señaló que en la especificación corresponden a la 2 y la 8,
+    y el comentario del test cita la 2.
+  - Exigí que ningún test mockeara la lógica bajo prueba y que hubiera más líneas de
+    aserción que de mock, con el recuento y refuerzo de los que no cumplieran: aceptado.
+
+- **Iteraciones:**
+
+  ```text
+  Caso 5: description omitida y description None son el mismo cuerpo (decisión 3 y 7 de la
+  especificación): misma clave → misma tarea, created False, sin 409. Deja el test así.
+  Revisa además que ningún test mockea la lógica bajo prueba y que hay más líneas de
+  aserción que de mock; dame el recuento (líneas de mock / líneas de assert) y refuerza
+  los que no cumplan. Vuelve a ejecutar pytest -q.
+  ```
+
+  → La IA confirmó que solo hay dos `monkeypatch.setattr`, ambos sobre dependencias
+  (`core.clock.today`, `users.service.get_user`). Contó por test líneas de mock (los 2
+  `setattr` autouse más las que manipulan el fake) frente a sentencias `assert`: antes
+  39/45 en total, con 12 de 19 tests sin cumplir.
+  → Ajuste: se reforzaron los 12 con aserciones que comprueban algo nuevo (contenido exacto
+  del almacén, `created`, títulos y responsables del listado, una tarea previa en el 404 de
+  `get_task`) y se quitó `user_lookups.clear()` del test de filtro sin coincidencias. Después:
+  38/61 en total, los 19 tests con más asserts que mocks.
+
+- **Validación:**
+  - `pytest -q` → 109 tests en verde (87 previos + 22 nuevos), código de salida 0.
+    Log: [`logs/12-tests.txt`](logs/12-tests.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/12-ruff.txt`](logs/12-ruff.txt)
+  - `pytest tests/test_tasks_service.py --cov=tasks --cov-branch` (ejecutado en el paso,
+    sin log guardado) → `tasks/service.py` al 100 % solo con los unitarios.
+- **Captura:** N/A
+- **Commit:** `test(tasks): unitarios del service con reloj y usuarios mockeados`
