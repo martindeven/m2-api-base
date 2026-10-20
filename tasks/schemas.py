@@ -3,6 +3,7 @@
 Las rutas devuelven siempre estos modelos (vía `response_model=`), nunca `dict`
 crudos. Aquí van las validaciones de forma; las reglas de dominio van en `service.py`.
 """
+import re
 from datetime import date, datetime
 from typing import Annotated
 
@@ -10,13 +11,13 @@ from pydantic import BaseModel, Field, field_validator
 
 TITLE_MIN_LENGTH = 3
 TITLE_MAX_LENGTH = 120
+DATE_ONLY_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 class TaskBase(BaseModel):
     title: str
     description: str | None = Field(default=None, max_length=1000)
     priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
-    # TODO(CA-17): solo formato YYYY-MM-DD y fecha real (sin hora).
     due_date: date | None = None
     assignee_id: Annotated[int, Field(strict=True, ge=1)] | None = None
 
@@ -31,6 +32,17 @@ class TaskBase(BaseModel):
                 "caracteres tras recortar"
             )
         return title
+
+    @field_validator("due_date", mode="before")
+    @classmethod
+    def require_date_only(cls, value: object) -> object:
+        """Solo acepta `YYYY-MM-DD`: sin hora, aunque sea 00:00:00 (CA-17)."""
+        if value is None or isinstance(value, date):
+            return value
+        if not isinstance(value, str) or not DATE_ONLY_PATTERN.fullmatch(value):
+            raise ValueError("la fecha límite debe tener el formato YYYY-MM-DD")
+        # Pydantic valida después que sea una fecha real (p. ej. rechaza 2026-02-30).
+        return value
 
 
 class TaskCreate(TaskBase):

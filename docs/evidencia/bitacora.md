@@ -1064,3 +1064,82 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/09-ruff.txt`](logs/09-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `feat(tasks): idempotencia con Idempotency-Key`
+
+## Paso P10 — Integración y estilo
+
+- **Prompt usado:**
+
+  ```text
+  Verifica la integración de tasks con el proyecto:
+  1. Ejecuta pytest -q y ruff check .: ¿todo en verde y sin avisos?
+  2. ¿El router está registrado y /docs mostrará los 3 endpoints con sus response_model?
+  3. Revisa contra @CLAUDE.md: capas, catálogo de errores, nombres, orden de rutas y
+     que no se tocaron migrations/ ni legacy/ (git diff main --stat).
+  4. Lista cualquier incumplimiento con archivo:línea y corrígelo con el cambio mínimo.
+  5. Levanta la app en segundo plano (uvicorn main:app --port 8000), ejecuta dos veces
+     curl -i -X POST localhost:8000/tasks -H 'Content-Type: application/json'
+     -H 'Idempotency-Key: demo-1' -d '{"title":"Revisar backups","priority":2,"assignee_id":1}'
+     (debe dar 201 y luego 200), muéstrame ambas respuestas y detén la app.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) basado en comprobaciones de solo lectura:
+    - pytest daba 86 verdes y 1 rojo (CA-17 `T00:00:00`); ruff limpio y sin avisos.
+    - Cobertura de `tasks/` al 100 %.
+    - El OpenAPI expone los 3 endpoints con `Task` / `list[Task]`.
+    - Capas, catálogo de errores, nombres y orden de rutas conformes con `CLAUDE.md`.
+    - `git diff main --stat` sin cambios en `migrations/` ni `legacy/`.
+  - Incumplimiento 1 — `tasks/schemas.py:19-20`: `due_date` aceptaba
+    `"2026-10-20T00:00:00"`, contra la decisión 4 y la "Definición de hecho" (pytest en verde).
+    Se propuso `Field(strict=True)`.
+  - Incumplimiento 2 — "Definición de hecho": `README.md` no mencionaba `tasks` y
+    `CHANGELOG.md` no existía. Se añaden 3 filas en la tabla de endpoints del README y un
+    `CHANGELOG.md` con `[Unreleased]`.
+  - Al implementar, `Field(strict=True)` rompió 8 tests: FastAPI valida el cuerpo en modo
+    Python y el modo estricto rechaza también `"2026-12-31"`. Se sustituyó por un validador
+    `mode="before"` que solo admite `YYYY-MM-DD`; Pydantic comprueba después que la fecha
+    exista.
+  - Solo se informó, sin cambiarlo:
+    - Queda un TODO de CA-01 (`status: str`).
+    - `docs/feature-tasks.md` (decisión 11) sigue diciendo `already_exists`.
+
+  ```python
+  DATE_ONLY_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+  @field_validator("due_date", mode="before")
+  @classmethod
+  def require_date_only(cls, value: object) -> object:
+      """Solo acepta `YYYY-MM-DD`: sin hora, aunque sea 00:00:00 (CA-17)."""
+      if value is None or isinstance(value, date):
+          return value
+      if not isinstance(value, str) or not DATE_ONLY_PATTERN.fullmatch(value):
+          raise ValueError("la fecha límite debe tener el formato YYYY-MM-DD")
+      # Pydantic valida después que sea una fecha real (p. ej. rechaza 2026-02-30).
+      return value
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan.
+  - Se descartó `Field(strict=True)` para `due_date` porque rompía 8 tests: FastAPI pasa el
+    cuerpo como `dict` y el modo estricto exige un objeto `date`. Se reemplazó por el
+    validador de formato (decisión propuesta por la IA y aceptada).
+  - Crear `CHANGELOG.md` y ampliar `README.md` se aceptó para cumplir la "Definición de
+    hecho" de `CLAUDE.md`.
+  - El TODO de `status` y la contradicción de `docs/feature-tasks.md` con `conflict()` quedan
+    sin cambiar: [PENDIENTE].
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 87 verdes, 0 rojos y sin avisos (`pytest -rw`). Cobertura
+    `pytest --cov=tasks --cov-branch` → 100 %.
+    Log: [`logs/10-tests-verde.txt`](logs/10-tests-verde.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/10-ruff.txt`](logs/10-ruff.txt)
+  - Dos `curl -i -X POST /tasks` con `Idempotency-Key: demo-1` y la app levantada → `201 Created`
+    y luego `200 OK`, con el mismo `id` (`1`) y el mismo `created_at`. La app se detuvo al
+    terminar. Log: [`logs/10-curl.txt`](logs/10-curl.txt)
+  - `git diff main --stat -- migrations legacy` → vacío.
+- **Captura:**
+  - ![Swagger con los endpoints de tasks](capturas/P10-swagger.png)
+  - ![Respuestas 201 y 200 de los curl](capturas/P10-curl.png)
+- **Commit:** `chore(tasks): integración y linting`

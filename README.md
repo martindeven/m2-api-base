@@ -33,6 +33,11 @@ Endpoints actuales:
 | GET    | `/users`          | Lista de usuarios               |
 | GET    | `/users/{id}`     | Un usuario por id (404 si no existe) |
 | POST   | `/users`          | Crea un usuario (409 si el email ya existe) |
+| GET    | `/tasks`          | Lista de tareas por id; filtro opcional `?assignee_id=<id>` |
+| GET    | `/tasks/{id}`     | Una tarea por id (404 si no existe) |
+| POST   | `/tasks`          | Crea una tarea (201); con `Idempotency-Key`, repetir el mismo cuerpo da 200 y otro cuerpo 409 |
+
+Reglas, errores y ejemplos del recurso `tasks`: [`docs/feature-tasks.md`](docs/feature-tasks.md).
 
 ## Tests y calidad
 
