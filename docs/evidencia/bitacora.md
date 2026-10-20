@@ -1317,3 +1317,84 @@
     sin log guardado) → `tasks/service.py` al 100 % solo con los unitarios.
 - **Captura:** N/A
 - **Commit:** `test(tasks): unitarios del service con reloj y usuarios mockeados`
+
+## Paso P13 — Test de integración users + tasks
+
+- **Prompt usado:**
+
+  ```text
+  Crea tests/test_tasks_integration.py con 1–2 tests de INTEGRACIÓN que usen la app
+  real (TestClient de @tests/conftest.py), el repositorio en memoria real y el recurso
+  users real. Solo se fija el reloj (core.clock.today) con monkeypatch.
+
+  Mapa de dependencias: routes → tasks.service → tasks.repository y users.service →
+  users.repository. Nada de eso se mockea.
+
+  Flujo (receta numerada):
+  1. Estado inicial: usuarios semilla (Ada id=1) y ninguna tarea.
+  2. POST /users crea a "Margaret" → guarda su id.
+  3. POST /tasks asignada a Margaret con Idempotency-Key "k-1" → 201.
+  4. Repite el mismo POST con "k-1" → 200 y mismo id.
+  5. POST /tasks asignada a Ada sin clave → 201.
+  6. GET /tasks?assignee_id=<Margaret> → exactamente 1 tarea, la del paso 3.
+  7. GET /tasks/{id} → coincide con lo creado.
+  Éxito = todas las aserciones y que no haya estado filtrado de otros tests.
+
+  Documenta en el docstring del módulo el setup/teardown (fixture autouse de reset).
+  Ejecuta la suite completa dos veces y, si pytest-randomly está instalado, una tercera
+  en orden aleatorio. Dime si todas las ejecuciones dan el mismo resultado.
+  ```
+
+- **Qué propuso la IA:**
+  - Nuevo `tests/test_tasks_integration.py` con 2 tests, sin mocks salvo `core.clock.today`
+    (fijado en 2026-10-20 con una fixture autouse).
+  - Docstring del módulo con el mapa de dependencias y el setup/teardown: `_reset_data`
+    (autouse, `conftest.py`) restaura los 4 usuarios semilla y vacía tareas y claves antes y
+    después de cada test; monkeypatch deshace el reloj al terminar.
+  - `test_flujo_alta_de_usuario_y_tareas_con_idempotencia_y_filtro`: la receta 1–7, un
+    comentario por paso. En el paso 3 la tarea vence hoy, para ejercitar también el reloj fijado.
+  - `test_no_queda_estado_de_otro_test`: se ejecuta después del flujo y comprueba que no
+    quedan tareas, que solo están los 4 usuarios semilla y que `k-1` con otro cuerpo da 201
+    con id 1 (la clave no sobrevivió).
+  - pytest-randomly no está instalado; la IA no lo instaló. Como sustituto manual ejecutó los
+    2 tests nuevos en orden inverso.
+
+  ```python
+  # 4. Repetición con la misma clave: 200 y la misma tarea.
+  response = client.post("/tasks", json=body, headers={"Idempotency-Key": "k-1"})
+  assert response.status_code == 200
+  assert response.json() == margaret_task
+
+  # 5. Tarea para Ada sin clave.
+  response = client.post("/tasks", json={"title": "Revisar backups", "assignee_id": 1})
+  assert response.status_code == 201
+  assert response.json()["id"] == margaret_task["id"] + 1
+
+  # 6. El filtro por Margaret devuelve solo su tarea.
+  response = client.get("/tasks", params={"assignee_id": margaret_id})
+  assert response.status_code == 200
+  assert response.json() == [margaret_task]
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aprobé el plan.
+  - Aceptado tras revisar que las dos ejecuciones de la suite dan el mismo resultado
+    (111 passed) y que el test de fuga de estado pasa también en orden inverso.
+  - La ejecución en orden aleatorio no se hizo porque pytest-randomly no está instalado;
+    instalarlo queda [PENDIENTE] de decisión.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` (ejecución 1) → 111 tests en verde, código de salida 0.
+    Log: [`logs/13-tests-run1.txt`](logs/13-tests-run1.txt)
+  - `pytest -q` (ejecución 2) → 111 tests en verde, código de salida 0: mismo resultado.
+    Log: [`logs/13-tests-run2.txt`](logs/13-tests-run2.txt)
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 111 passed, cobertura total
+    99,10 % (umbral 90 % alcanzado); `tasks/` al 100 %; faltan `core/clock.py:16` y
+    `main.py:18`, igual que en P11.
+    Log: [`logs/13-cobertura.txt`](logs/13-cobertura.txt)
+  - Orden inverso de los 2 tests nuevos (ejecutado en el paso, sin log guardado) → 2 passed.
+  - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
+- **Captura:** N/A
+- **Commit:** `test(tasks): flujo de integración users + tasks`
