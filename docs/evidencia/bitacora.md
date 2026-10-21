@@ -2348,7 +2348,7 @@
   | 1 | `tasks/service.py:40-45` | Dos POST simultáneos con la misma `Idempotency-Key` crean dos tareas | **Bloqueante** (decisión 11) · corregido |
   | 2 | `tasks/repository.py:13,16` | Claves y tareas en memoria, sin límite ni caducidad | Falso positivo: intencional porque decisión 10 y "No incluye: caducidad / autenticación" |
   | 3 | `tasks/service.py` (409) | El `detail` repite la clave del cliente | Falso positivo: intencional porque el contrato fija `"clave de idempotencia ya existe: <clave>"` |
-  | 4 | `core/errors.py:26-31` | `conflict()` nueva y sin uso | **Bloqueante** ("No incluye: nuevas funciones en `core/errors.py`", decisión 11) |
+  | 4 | `core/errors.py:26-31` | `conflict()` nueva y sin uso | **Bloqueante** ("No incluye: nuevas funciones en `core/errors.py`", decisión 11) · corregido |
   | 5 | `CHANGELOG.md:14` | Anuncia `conflict()` | Menor |
   | 6 | `tasks/schemas.py:49` | Un `datetime` pasado desde Python se cuela como fecha | Menor (por HTTP no ocurre) |
   | 7 | `tasks/schemas.py:67-68` | `status: str` con `TODO` | Menor |
@@ -2388,8 +2388,10 @@
     como bloqueante (#4): el código 409 sí es intencional, pero la decisión 11 exige
     `errors.already_exists(...)` y prohíbe funciones nuevas en `core/errors.py`. Es una
     decisión propuesta por la IA y aceptada.
-  - Acepté corregir solo el primer bloqueante (#1, junto con su test #13) y parar. #4, #10 y
-    #11 quedan pendientes.
+  - Acepté corregir solo el primer bloqueante (#1, junto con su test #13) y parar.
+  - Después pedí corregir solo el siguiente bloqueante (#4) y parar. La línea de
+    `CHANGELOG.md:14` que anuncia `conflict()` (#5, menor) no se tocó. #10 y #11 quedan
+    pendientes.
 
 - **Iteraciones:**
   - **Iteración 1 · arreglo del bloqueante #1**
@@ -2418,10 +2420,32 @@
       - Antes del arreglo, el test nuevo fallaba porque se creaban dos tareas.
       - Después del arreglo, `pytest -q` queda en verde, con 115 tests y ningún fallo.
       - `ruff check .` da "All checks passed!".
+  - **Iteración 2 · arreglo del bloqueante #4**
+
+    ```text
+    Corrige el siguiente bloqueante de la tabla, ejecuta pytest -q y ruff check . y para.
+    Si no quedan bloqueantes, dímelo y no cambies nada.
+    ```
+
+    - **Respuesta:**
+      - Identificó el #4 como siguiente bloqueante: `conflict()` en `core/errors.py`, que
+        incumple "No incluye: nuevas funciones en `core/errors.py`" y la decisión 11.
+      - Comprobó con grep que nada la usaba: el 409 ya sale de `errors.already_exists(...)`.
+      - Borró la función. Con eso, `git diff main -- core/errors.py` sale vacío y el catálogo
+        queda igual que en `main`.
+      - Avisó de que `CHANGELOG.md:14` (#5, menor) sigue anunciando `conflict()`.
+    - **Ajuste resultante:**
+      - `pytest -q` queda en verde, con 115 tests y ningún fallo.
+      - `ruff check .` da "All checks passed!".
+      - Quedan los bloqueantes #10 y #11.
 
 - **Validación:**
-  - `pytest -q` → 115 tests en verde, sin fallos. La cifra sale de contar los puntos:
-    72 + 43, y esta salida no imprime línea de resumen.
+  - Arreglo 1: `pytest -q` → 115 tests en verde, sin fallos. La cifra sale de contar los
+    puntos: 72 + 43, y esta salida no imprime línea de resumen.
     Log: [`logs/23-tests-arreglo1.txt`](logs/23-tests-arreglo1.txt)
+  - Arreglo 2: `pytest -q` → 115 tests en verde, sin fallos (72 + 43 puntos).
+    Log: [`logs/23-tests-arreglo2.txt`](logs/23-tests-arreglo2.txt)
 - **Captura:** N/A
-- **Commit:** `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
+- **Commit:**
+  - Arreglo 1: `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
+  - Arreglo 2: `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`

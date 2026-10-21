@@ -23,14 +23,6 @@ def invalid_request(message: str) -> HTTPException:
     )
 
 
-def conflict(message: str) -> HTTPException:
-    """409 — la petición choca con el estado actual del recurso."""
-    return HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=message,
-    )
-
-
 def already_exists(resource: str, identifier: object) -> HTTPException:
     """409 — el recurso que se quiere crear ya existe."""
     return HTTPException(
