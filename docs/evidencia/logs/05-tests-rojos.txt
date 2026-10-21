@@ -1,0 +1,1466 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 82%]
+FFFFFFFFF......                                                          [100%]
+=================================== FAILURES ===================================
+________ test_ca01_creacion_minima_devuelve_201_con_valores_por_defecto ________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225d1760>
+
+    def test_ca01_creacion_minima_devuelve_201_con_valores_por_defecto(client: TestClient) -> None:
+        body = {"title": "Revisar backups"}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:38: AssertionError
+__________ test_ca02_creacion_completa_devuelve_los_valores_enviados ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225e80e0>
+
+    def test_ca02_creacion_completa_devuelve_los_valores_enviados(client: TestClient) -> None:
+        body = {
+            "title": "Rotar certificados",
+            "description": "Servidores web",
+            "priority": 5,
+            "due_date": "2026-12-31",
+            "assignee_id": 2,
+        }
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:61: AssertionError
+_____________ test_ca03_ignora_campos_del_servidor_y_desconocidos ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225e9ee0>
+
+    def test_ca03_ignora_campos_del_servidor_y_desconocidos(client: TestClient) -> None:
+        body = {
+            "title": "Tarea x",
+            "id": 99,
+            "status": "done",
+            "created_at": "2000-01-01T00:00:00Z",
+            "foo": 1,
+        }
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:77: AssertionError
+_________________________ test_ca04_titulo_se_recorta __________________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225e97c0>
+
+    def test_ca04_titulo_se_recorta(client: TestClient) -> None:
+        body = {"title": "  Revisar backups  "}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:93: AssertionError
+__________ test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[abc] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22682a20>
+title = 'abc'
+
+    @pytest.mark.parametrize("title", ["abc", "  abc  ", "a" * 120])
+    def test_ca05_titulo_en_los_limites_3_y_120_devuelve_201(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:103: AssertionError
+________ test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[  abc  ] _________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22682840>
+title = '  abc  '
+
+    @pytest.mark.parametrize("title", ["abc", "  abc  ", "a" * 120])
+    def test_ca05_titulo_en_los_limites_3_y_120_devuelve_201(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:103: AssertionError
+_ test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c226824b0>
+title = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+    @pytest.mark.parametrize("title", ["abc", "  abc  ", "a" * 120])
+    def test_ca05_titulo_en_los_limites_3_y_120_devuelve_201(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:103: AssertionError
+_______________ test_ca06_titulo_corto_o_vacio_devuelve_422[ab] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22678110>
+title = 'ab'
+
+    @pytest.mark.parametrize("title", ["ab", "  ab  ", "   ", ""])
+    def test_ca06_titulo_corto_o_vacio_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:113: AssertionError
+_____________ test_ca06_titulo_corto_o_vacio_devuelve_422[  ab  ] ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267a9f0>
+title = '  ab  '
+
+    @pytest.mark.parametrize("title", ["ab", "  ab  ", "   ", ""])
+    def test_ca06_titulo_corto_o_vacio_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:113: AssertionError
+_______________ test_ca06_titulo_corto_o_vacio_devuelve_422[   ] _______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22678980>
+title = '   '
+
+    @pytest.mark.parametrize("title", ["ab", "  ab  ", "   ", ""])
+    def test_ca06_titulo_corto_o_vacio_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:113: AssertionError
+________________ test_ca06_titulo_corto_o_vacio_devuelve_422[] _________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267b440>, title = ''
+
+    @pytest.mark.parametrize("title", ["ab", "  ab  ", "   ", ""])
+    def test_ca06_titulo_corto_o_vacio_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:113: AssertionError
+_ test_ca07_titulo_de_121_caracteres_devuelve_422[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c22637680>
+title = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+    @pytest.mark.parametrize("title", ["a" * 121, "  " + "a" * 121 + "  "])
+    def test_ca07_titulo_de_121_caracteres_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:123: AssertionError
+_ test_ca07_titulo_de_121_caracteres_devuelve_422[  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  ] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c22636570>
+title = '  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  '
+
+    @pytest.mark.parametrize("title", ["a" * 121, "  " + "a" * 121 + "  "])
+    def test_ca07_titulo_de_121_caracteres_devuelve_422(client: TestClient, title: str) -> None:
+        body = {"title": title}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:123: AssertionError
+__________ test_ca08_titulo_ausente_o_no_texto_devuelve_422[ausente] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c226367e0>
+body = {'description': 'sin título'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"description": "sin título"}, {"title": 123}, {"title": None}],
+        ids=["ausente", "numero", "null"],
+    )
+    def test_ca08_titulo_ausente_o_no_texto_devuelve_422(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:135: AssertionError
+___________ test_ca08_titulo_ausente_o_no_texto_devuelve_422[numero] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22635be0>
+body = {'title': 123}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"description": "sin título"}, {"title": 123}, {"title": None}],
+        ids=["ausente", "numero", "null"],
+    )
+    def test_ca08_titulo_ausente_o_no_texto_devuelve_422(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:135: AssertionError
+____________ test_ca08_titulo_ausente_o_no_texto_devuelve_422[null] ____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22636510>
+body = {'title': None}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"description": "sin título"}, {"title": 123}, {"title": None}],
+        ids=["ausente", "numero", "null"],
+    )
+    def test_ca08_titulo_ausente_o_no_texto_devuelve_422(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:135: AssertionError
+__________ test_ca09_descripcion_se_guarda_tal_cual[  con espacios  ] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267abd0>
+description = '  con espacios  '
+
+    @pytest.mark.parametrize("description", ["  con espacios  ", ""])
+    def test_ca09_descripcion_se_guarda_tal_cual(client: TestClient, description: str) -> None:
+        body = {"title": "Revisar backups", "description": description}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:148: AssertionError
+__________________ test_ca09_descripcion_se_guarda_tal_cual[] __________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c226794c0>
+description = ''
+
+    @pytest.mark.parametrize("description", ["  con espacios  ", ""])
+    def test_ca09_descripcion_se_guarda_tal_cual(client: TestClient, description: str) -> None:
+        body = {"title": "Revisar backups", "description": description}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:148: AssertionError
+_________ test_ca10_descripcion_omitida_o_null_se_guarda_null[omitida] _________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22679520>
+body = {'title': 'Revisar backups'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"title": "Revisar backups"}, {"title": "Revisar backups", "description": None}],
+        ids=["omitida", "null"],
+    )
+    def test_ca10_descripcion_omitida_o_null_se_guarda_null(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:160: AssertionError
+__________ test_ca10_descripcion_omitida_o_null_se_guarda_null[null] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22681400>
+body = {'title': 'Revisar backups', 'description': None}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"title": "Revisar backups"}, {"title": "Revisar backups", "description": None}],
+        ids=["omitida", "null"],
+    )
+    def test_ca10_descripcion_omitida_o_null_se_guarda_null(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:160: AssertionError
+_______ test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[1000] ________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22683350>
+description = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+expected_status = 201
+
+    @pytest.mark.parametrize(
+        ("description", "expected_status"),
+        [("a" * 1000, 201), ("a" * 1001, 422), (" " + "a" * 999 + " ", 422)],
+        ids=["1000", "1001", "999_con_espacios"],
+    )
+    def test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido(
+        client: TestClient, description: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups", "description": description}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:176: AssertionError
+_______ test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[1001] ________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22682480>
+description = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+expected_status = 422
+
+    @pytest.mark.parametrize(
+        ("description", "expected_status"),
+        [("a" * 1000, 201), ("a" * 1001, 422), (" " + "a" * 999 + " ", 422)],
+        ids=["1000", "1001", "999_con_espacios"],
+    )
+    def test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido(
+        client: TestClient, description: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups", "description": description}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:176: AssertionError
+_ test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[999_con_espacios] __
+
+client = <starlette.testclient.TestClient object at 0x7f0c22683b90>
+description = ' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa '
+expected_status = 422
+
+    @pytest.mark.parametrize(
+        ("description", "expected_status"),
+        [("a" * 1000, 201), ("a" * 1001, 422), (" " + "a" * 999 + " ", 422)],
+        ids=["1000", "1001", "999_con_espacios"],
+    )
+    def test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido(
+        client: TestClient, description: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups", "description": description}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:176: AssertionError
+________ test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[por_defecto] ________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225ebaa0>, extra = {}
+expected_priority = 3
+
+    @pytest.mark.parametrize(
+        ("extra", "expected_priority"),
+        [({}, 3), ({"priority": 1}, 1), ({"priority": 5}, 5)],
+        ids=["por_defecto", "1", "5"],
+    )
+    def test_ca12_prioridad_por_defecto_3_y_limites_1_y_5(
+        client: TestClient, extra: dict, expected_priority: int
+    ) -> None:
+        body = {"title": "Revisar backups", **extra}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:198: AssertionError
+_____________ test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[1] _____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265f020>
+extra = {'priority': 1}, expected_priority = 1
+
+    @pytest.mark.parametrize(
+        ("extra", "expected_priority"),
+        [({}, 3), ({"priority": 1}, 1), ({"priority": 5}, 5)],
+        ids=["por_defecto", "1", "5"],
+    )
+    def test_ca12_prioridad_por_defecto_3_y_limites_1_y_5(
+        client: TestClient, extra: dict, expected_priority: int
+    ) -> None:
+        body = {"title": "Revisar backups", **extra}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:198: AssertionError
+_____________ test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[5] _____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265d6a0>
+extra = {'priority': 5}, expected_priority = 5
+
+    @pytest.mark.parametrize(
+        ("extra", "expected_priority"),
+        [({}, 3), ({"priority": 1}, 1), ({"priority": 5}, 5)],
+        ids=["por_defecto", "1", "5"],
+    )
+    def test_ca12_prioridad_por_defecto_3_y_limites_1_y_5(
+        client: TestClient, extra: dict, expected_priority: int
+    ) -> None:
+        body = {"title": "Revisar backups", **extra}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:198: AssertionError
+______________ test_ca13_prioridad_fuera_de_rango_devuelve_422[0] ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c225e9130>
+priority = 0
+
+    @pytest.mark.parametrize("priority", [0, 6])
+    def test_ca13_prioridad_fuera_de_rango_devuelve_422(client: TestClient, priority: int) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:208: AssertionError
+______________ test_ca13_prioridad_fuera_de_rango_devuelve_422[6] ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22682cf0>
+priority = 6
+
+    @pytest.mark.parametrize("priority", [0, 6])
+    def test_ca13_prioridad_fuera_de_rango_devuelve_422(client: TestClient, priority: int) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:208: AssertionError
+___________ test_ca14_prioridad_no_entera_estricta_devuelve_422[3.0] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22680950>
+priority = 3.0
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+___________ test_ca14_prioridad_no_entera_estricta_devuelve_422[3.5] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267af60>
+priority = 3.5
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+____________ test_ca14_prioridad_no_entera_estricta_devuelve_422[3] ____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22679be0>
+priority = '3'
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+__________ test_ca14_prioridad_no_entera_estricta_devuelve_422[alta] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22679bb0>
+priority = 'alta'
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+__________ test_ca14_prioridad_no_entera_estricta_devuelve_422[True] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22635700>
+priority = True
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+__________ test_ca14_prioridad_no_entera_estricta_devuelve_422[None] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22636cc0>
+priority = None
+
+    @pytest.mark.parametrize("priority", [3.0, 3.5, "3", "alta", True, None])
+    def test_ca14_prioridad_no_entera_estricta_devuelve_422(client: TestClient, priority) -> None:
+        body = {"title": "Revisar backups", "priority": priority}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:218: AssertionError
+____________ test_ca15_fecha_limite_hoy_o_futura_devuelve_201[hoy] _____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265d910>
+due_date = '2026-10-20'
+
+    @pytest.mark.parametrize(
+        "due_date", ["2026-10-20", "2026-10-21", "2030-01-01"], ids=["hoy", "manana", "futura"]
+    )
+    def test_ca15_fecha_limite_hoy_o_futura_devuelve_201(client: TestClient, due_date: str) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:233: AssertionError
+___________ test_ca15_fecha_limite_hoy_o_futura_devuelve_201[manana] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265fa10>
+due_date = '2026-10-21'
+
+    @pytest.mark.parametrize(
+        "due_date", ["2026-10-20", "2026-10-21", "2030-01-01"], ids=["hoy", "manana", "futura"]
+    )
+    def test_ca15_fecha_limite_hoy_o_futura_devuelve_201(client: TestClient, due_date: str) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:233: AssertionError
+___________ test_ca15_fecha_limite_hoy_o_futura_devuelve_201[futura] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22663d10>
+due_date = '2030-01-01'
+
+    @pytest.mark.parametrize(
+        "due_date", ["2026-10-20", "2026-10-21", "2030-01-01"], ids=["hoy", "manana", "futura"]
+    )
+    def test_ca15_fecha_limite_hoy_o_futura_devuelve_201(client: TestClient, due_date: str) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:233: AssertionError
+________ test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto _________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22663500>
+
+    def test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "due_date": "2026-10-19"}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:242: AssertionError
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[20/10/2026] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265d610>
+due_date = '20/10/2026'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T10:00:00] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265c1a0>
+due_date = '2026-10-20T10:00:00'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c226365d0>
+due_date = '2026-10-20T00:00:00'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-02-30] _
+
+client = <starlette.testclient.TestClient object at 0x7f0c22679ca0>
+due_date = '2026-02-30'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+________ test_ca18_fecha_limite_omitida_o_null_se_guarda_null[omitida] _________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267bef0>
+body = {'title': 'Revisar backups'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"title": "Revisar backups"}, {"title": "Revisar backups", "due_date": None}],
+        ids=["omitida", "null"],
+    )
+    def test_ca18_fecha_limite_omitida_o_null_se_guarda_null(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:268: AssertionError
+__________ test_ca18_fecha_limite_omitida_o_null_se_guarda_null[null] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22681760>
+body = {'title': 'Revisar backups', 'due_date': None}
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"title": "Revisar backups"}, {"title": "Revisar backups", "due_date": None}],
+        ids=["omitida", "null"],
+    )
+    def test_ca18_fecha_limite_omitida_o_null_se_guarda_null(client: TestClient, body: dict) -> None:
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:268: AssertionError
+_______________ test_ca19_la_referencia_es_el_reloj_del_servidor _______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c226824e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0c22680110>
+
+    def test_ca19_la_referencia_es_el_reloj_del_servidor(
+        client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("core.clock.today", lambda: date(2026, 10, 21))
+        body = {"title": "Revisar backups", "due_date": "2026-10-20"}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:280: AssertionError
+_________________ test_ca20_responsable_existente_devuelve_201 _________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22681fa0>
+
+    def test_ca20_responsable_existente_devuelve_201(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 1}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:292: AssertionError
+________________ test_ca21_responsable_inexistente_devuelve_404 ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22660770>
+
+    def test_ca21_responsable_inexistente_devuelve_404(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 999}
+    
+        response = _post(client, body)
+    
+        assert response.status_code == 404
+>       assert "no encontrado" in response.json()["detail"]
+E       AssertionError: assert 'no encontrado' in 'Not Found'
+
+tests/test_tasks.py:302: AssertionError
+___________ test_ca22_responsable_con_forma_invalida_devuelve_422[0] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c226629c0>
+assignee_id = 0
+
+    @pytest.mark.parametrize("assignee_id", [0, -1, "1", 1.0, True])
+    def test_ca22_responsable_con_forma_invalida_devuelve_422(client: TestClient, assignee_id) -> None:
+        body = {"title": "Revisar backups", "assignee_id": assignee_id}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:311: AssertionError
+__________ test_ca22_responsable_con_forma_invalida_devuelve_422[-1] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d20890>
+assignee_id = -1
+
+    @pytest.mark.parametrize("assignee_id", [0, -1, "1", 1.0, True])
+    def test_ca22_responsable_con_forma_invalida_devuelve_422(client: TestClient, assignee_id) -> None:
+        body = {"title": "Revisar backups", "assignee_id": assignee_id}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:311: AssertionError
+___________ test_ca22_responsable_con_forma_invalida_devuelve_422[1] ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d21730>
+assignee_id = '1'
+
+    @pytest.mark.parametrize("assignee_id", [0, -1, "1", 1.0, True])
+    def test_ca22_responsable_con_forma_invalida_devuelve_422(client: TestClient, assignee_id) -> None:
+        body = {"title": "Revisar backups", "assignee_id": assignee_id}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:311: AssertionError
+__________ test_ca22_responsable_con_forma_invalida_devuelve_422[1.0] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22660470>
+assignee_id = 1.0
+
+    @pytest.mark.parametrize("assignee_id", [0, -1, "1", 1.0, True])
+    def test_ca22_responsable_con_forma_invalida_devuelve_422(client: TestClient, assignee_id) -> None:
+        body = {"title": "Revisar backups", "assignee_id": assignee_id}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:311: AssertionError
+_________ test_ca22_responsable_con_forma_invalida_devuelve_422[True] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22663830>
+assignee_id = True
+
+    @pytest.mark.parametrize("assignee_id", [0, -1, "1", 1.0, True])
+    def test_ca22_responsable_con_forma_invalida_devuelve_422(client: TestClient, assignee_id) -> None:
+        body = {"title": "Revisar backups", "assignee_id": assignee_id}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:311: AssertionError
+__________ test_ca23_responsable_null_explicito_queda_sin_responsable __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22661c70>
+
+    def test_ca23_responsable_null_explicito_queda_sin_responsable(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "assignee_id": None}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:320: AssertionError
+______________ test_ca24_la_forma_gana_al_responsable_inexistente ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22682f30>
+
+    def test_ca24_la_forma_gana_al_responsable_inexistente(client: TestClient) -> None:
+        body = {"title": "ab", "assignee_id": 999}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:332: AssertionError
+__________ test_ca25_la_fecha_pasada_gana_al_responsable_inexistente ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22680830>
+
+    def test_ca25_la_fecha_pasada_gana_al_responsable_inexistente(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "due_date": "2026-10-19", "assignee_id": 999}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:341: AssertionError
+_____ test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea _____
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267aff0>
+
+    def test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea(
+        client: TestClient,
+    ) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 1}
+        first = _post(client, body, key="K")
+    
+        repeated = _post(client, body, key="K")
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:356: AssertionError
+__________ test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22636000>
+
+    def test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        repeated = _post(client, {"priority": 3, "title": " Revisar "}, key="K")
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:367: AssertionError
+_____________ test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409 _____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265c3e0>
+
+    def test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        response = _post(client, {"title": "Otra tarea"}, key="K")
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:378: AssertionError
+_______________ test_ca29_un_fallo_no_guarda_la_clave[tras_404] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d209e0>
+failing_body = {'title': 'Revisar', 'assignee_id': 999}, failing_status = 404
+
+    @pytest.mark.parametrize(
+        ("failing_body", "failing_status"),
+        [({"title": "Revisar", "assignee_id": 999}, 404), ({"title": "ab"}, 422)],
+        ids=["tras_404", "tras_422"],
+    )
+    def test_ca29_un_fallo_no_guarda_la_clave(
+        client: TestClient, failing_body: dict, failing_status: int
+    ) -> None:
+        first = _post(client, failing_body, key="K")
+    
+        response = _post(client, {"title": "Revisar backups"}, key="K")
+    
+        assert first.status_code == failing_status
+>       assert response.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:397: AssertionError
+_______________ test_ca29_un_fallo_no_guarda_la_clave[tras_422] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d23a70>
+failing_body = {'title': 'ab'}, failing_status = 422
+
+    @pytest.mark.parametrize(
+        ("failing_body", "failing_status"),
+        [({"title": "Revisar", "assignee_id": 999}, 404), ({"title": "ab"}, 422)],
+        ids=["tras_404", "tras_422"],
+    )
+    def test_ca29_un_fallo_no_guarda_la_clave(
+        client: TestClient, failing_body: dict, failing_status: int
+    ) -> None:
+        first = _post(client, failing_body, key="K")
+    
+        response = _post(client, {"title": "Revisar backups"}, key="K")
+    
+>       assert first.status_code == failing_status
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:396: AssertionError
+____________ test_ca30_cuerpo_invalido_con_clave_usada_devuelve_422 ____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb6ba0>
+
+    def test_ca30_cuerpo_invalido_con_clave_usada_devuelve_422(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        response = _post(client, {"title": "ab"}, key="K")
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:406: AssertionError
+___________________ test_ca31_la_clave_distingue_mayusculas ____________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb7c80>
+
+    def test_ca31_la_clave_distingue_mayusculas(client: TestClient) -> None:
+        body = {"title": "Revisar backups"}
+        first = _post(client, body, key="abc")
+    
+        response = _post(client, body, key="ABC")
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:417: AssertionError
+________________ test_ca32_longitud_de_la_clave_entre_1_y_64[1] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb70b0>, key = 'k'
+expected_status = 201
+
+    @pytest.mark.parametrize(
+        ("key", "expected_status"),
+        [("k", 201), ("k" * 64, 201), ("", 422), ("k" * 65, 422)],
+        ids=["1", "64", "vacia", "65"],
+    )
+    def test_ca32_longitud_de_la_clave_entre_1_y_64(
+        client: TestClient, key: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups"}
+    
+        response = _post(client, body, key=key)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:434: AssertionError
+_______________ test_ca32_longitud_de_la_clave_entre_1_y_64[64] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb4650>
+key = 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'
+expected_status = 201
+
+    @pytest.mark.parametrize(
+        ("key", "expected_status"),
+        [("k", 201), ("k" * 64, 201), ("", 422), ("k" * 65, 422)],
+        ids=["1", "64", "vacia", "65"],
+    )
+    def test_ca32_longitud_de_la_clave_entre_1_y_64(
+        client: TestClient, key: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups"}
+    
+        response = _post(client, body, key=key)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:434: AssertionError
+______________ test_ca32_longitud_de_la_clave_entre_1_y_64[vacia] ______________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d22cf0>, key = ''
+expected_status = 422
+
+    @pytest.mark.parametrize(
+        ("key", "expected_status"),
+        [("k", 201), ("k" * 64, 201), ("", 422), ("k" * 65, 422)],
+        ids=["1", "64", "vacia", "65"],
+    )
+    def test_ca32_longitud_de_la_clave_entre_1_y_64(
+        client: TestClient, key: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups"}
+    
+        response = _post(client, body, key=key)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:434: AssertionError
+_______________ test_ca32_longitud_de_la_clave_entre_1_y_64[65] ________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d22240>
+key = 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'
+expected_status = 422
+
+    @pytest.mark.parametrize(
+        ("key", "expected_status"),
+        [("k", 201), ("k" * 64, 201), ("", 422), ("k" * 65, 422)],
+        ids=["1", "64", "vacia", "65"],
+    )
+    def test_ca32_longitud_de_la_clave_entre_1_y_64(
+        client: TestClient, key: str, expected_status: int
+    ) -> None:
+        body = {"title": "Revisar backups"}
+    
+        response = _post(client, body, key=key)
+    
+>       assert response.status_code == expected_status
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:434: AssertionError
+___________________ test_ca33_sin_clave_no_hay_deduplicacion ___________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265ecc0>
+
+    def test_ca33_sin_clave_no_hay_deduplicacion(client: TestClient) -> None:
+        body = {"title": "Revisar backups"}
+        first = _post(client, body)
+    
+        second = _post(client, body)
+    
+>       assert first.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:447: AssertionError
+_________________ test_ca34_listado_vacio_devuelve_lista_vacia _________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22635a30>
+
+    def test_ca34_listado_vacio_devuelve_lista_vacia(client: TestClient) -> None:
+        response = client.get("/tasks")
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:458: AssertionError
+__________________ test_ca35_listado_completo_ordenado_por_id __________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267aa50>
+
+    def test_ca35_listado_completo_ordenado_por_id(client: TestClient) -> None:
+        for title in ["Tarea uno", "Tarea dos", "Tarea tres"]:
+            _post(client, {"title": title})
+    
+        response = client.get("/tasks")
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:468: AssertionError
+__________ test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2259ee70>
+
+    def test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas(client: TestClient) -> None:
+        for assignee_id in [1, 2, 1, None]:
+            _post(client, {"title": "Revisar backups", "assignee_id": assignee_id})
+    
+        response = client.get("/tasks", params={"assignee_id": 1})
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:478: AssertionError
+_________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[999] _________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267b5c0>
+assignee_id = 999
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+        response = client.get("/tasks", params={"assignee_id": assignee_id})
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:491: AssertionError
+__________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[0] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2259f890>
+assignee_id = 0
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+        response = client.get("/tasks", params={"assignee_id": assignee_id})
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:491: AssertionError
+_________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[-1] __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2265eba0>
+assignee_id = -1
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+        response = client.get("/tasks", params={"assignee_id": assignee_id})
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:491: AssertionError
+___________________ test_ca38_filtro_no_entero_devuelve_422 ____________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb47d0>
+
+    def test_ca38_filtro_no_entero_devuelve_422(client: TestClient) -> None:
+        response = client.get("/tasks", params={"assignee_id": "abc"})
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:498: AssertionError
+_________ test_ca39_consultar_tarea_existente_devuelve_la_misma_tarea __________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb4230>
+
+    def test_ca39_consultar_tarea_existente_devuelve_la_misma_tarea(client: TestClient) -> None:
+        created = _post(client, {"title": "Revisar backups", "priority": 2}).json()
+    
+>       response = client.get(f"/tasks/{created['id']}")
+                                        ^^^^^^^^^^^^^
+E       KeyError: 'id'
+
+tests/test_tasks.py:505: KeyError
+___________ test_ca40_consultar_tarea_inexistente_devuelve_404[999] ____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c22683b90>
+task_id = 999
+
+    @pytest.mark.parametrize("task_id", [999, 0, -1])
+    def test_ca40_consultar_tarea_inexistente_devuelve_404(client: TestClient, task_id: int) -> None:
+        response = client.get(f"/tasks/{task_id}")
+    
+        assert response.status_code == 404
+>       assert "no encontrado" in response.json()["detail"]
+E       AssertionError: assert 'no encontrado' in 'Not Found'
+
+tests/test_tasks.py:516: AssertionError
+____________ test_ca40_consultar_tarea_inexistente_devuelve_404[0] _____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21cb4740>, task_id = 0
+
+    @pytest.mark.parametrize("task_id", [999, 0, -1])
+    def test_ca40_consultar_tarea_inexistente_devuelve_404(client: TestClient, task_id: int) -> None:
+        response = client.get(f"/tasks/{task_id}")
+    
+        assert response.status_code == 404
+>       assert "no encontrado" in response.json()["detail"]
+E       AssertionError: assert 'no encontrado' in 'Not Found'
+
+tests/test_tasks.py:516: AssertionError
+____________ test_ca40_consultar_tarea_inexistente_devuelve_404[-1] ____________
+
+client = <starlette.testclient.TestClient object at 0x7f0c2267a660>
+task_id = -1
+
+    @pytest.mark.parametrize("task_id", [999, 0, -1])
+    def test_ca40_consultar_tarea_inexistente_devuelve_404(client: TestClient, task_id: int) -> None:
+        response = client.get(f"/tasks/{task_id}")
+    
+        assert response.status_code == 404
+>       assert "no encontrado" in response.json()["detail"]
+E       AssertionError: assert 'no encontrado' in 'Not Found'
+
+tests/test_tasks.py:516: AssertionError
+___________________ test_ca41_task_id_no_entero_devuelve_422 ___________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d53bf0>
+
+    def test_ca41_task_id_no_entero_devuelve_422(client: TestClient) -> None:
+        response = client.get("/tasks/abc")
+    
+>       assert response.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:522: AssertionError
+____________________ test_ca42_reset_limpia_tareas_y_claves ____________________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d50470>
+
+    def test_ca42_reset_limpia_tareas_y_claves(client: TestClient) -> None:
+        _post(client, {"title": "Revisar"}, key="K")
+    
+        tasks_repository.reset()
+    
+>       assert client.get("/tasks").json() == []
+E       AssertionError: assert {'detail': 'Not Found'} == []
+E         
+E         Use -v to get more diff
+
+tests/test_tasks.py:534: AssertionError
+__________ test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista ___________
+
+client = <starlette.testclient.TestClient object at 0x7f0c21d50440>
+
+    def test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista(client: TestClient) -> None:
+        _post(client, {"title": "Revisar"}, key="K")
+    
+        past_date = _post(client, {"title": "Revisar backups", "due_date": "2026-10-19"})
+        missing_assignee = _post(client, {"title": "Revisar backups", "assignee_id": 999})
+        conflict = _post(client, {"title": "Otra tarea"}, key="K")
+        missing_task = client.get("/tasks/999")
+        shape_error = _post(client, {"title": "ab"})
+    
+>       assert past_date.status_code == 422
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_tasks.py:549: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tasks.py::test_ca01_creacion_minima_devuelve_201_con_valores_por_defecto
+FAILED tests/test_tasks.py::test_ca02_creacion_completa_devuelve_los_valores_enviados
+FAILED tests/test_tasks.py::test_ca03_ignora_campos_del_servidor_y_desconocidos
+FAILED tests/test_tasks.py::test_ca04_titulo_se_recorta - assert 404 == 201
+FAILED tests/test_tasks.py::test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[abc]
+FAILED tests/test_tasks.py::test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[  abc  ]
+FAILED tests/test_tasks.py::test_ca05_titulo_en_los_limites_3_y_120_devuelve_201[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+FAILED tests/test_tasks.py::test_ca06_titulo_corto_o_vacio_devuelve_422[ab]
+FAILED tests/test_tasks.py::test_ca06_titulo_corto_o_vacio_devuelve_422[  ab  ]
+FAILED tests/test_tasks.py::test_ca06_titulo_corto_o_vacio_devuelve_422[   ]
+FAILED tests/test_tasks.py::test_ca06_titulo_corto_o_vacio_devuelve_422[] - a...
+FAILED tests/test_tasks.py::test_ca07_titulo_de_121_caracteres_devuelve_422[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+FAILED tests/test_tasks.py::test_ca07_titulo_de_121_caracteres_devuelve_422[  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  ]
+FAILED tests/test_tasks.py::test_ca08_titulo_ausente_o_no_texto_devuelve_422[ausente]
+FAILED tests/test_tasks.py::test_ca08_titulo_ausente_o_no_texto_devuelve_422[numero]
+FAILED tests/test_tasks.py::test_ca08_titulo_ausente_o_no_texto_devuelve_422[null]
+FAILED tests/test_tasks.py::test_ca09_descripcion_se_guarda_tal_cual[  con espacios  ]
+FAILED tests/test_tasks.py::test_ca09_descripcion_se_guarda_tal_cual[] - asse...
+FAILED tests/test_tasks.py::test_ca10_descripcion_omitida_o_null_se_guarda_null[omitida]
+FAILED tests/test_tasks.py::test_ca10_descripcion_omitida_o_null_se_guarda_null[null]
+FAILED tests/test_tasks.py::test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[1000]
+FAILED tests/test_tasks.py::test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[1001]
+FAILED tests/test_tasks.py::test_ca11_descripcion_maximo_1000_sobre_el_valor_recibido[999_con_espacios]
+FAILED tests/test_tasks.py::test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[por_defecto]
+FAILED tests/test_tasks.py::test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[1]
+FAILED tests/test_tasks.py::test_ca12_prioridad_por_defecto_3_y_limites_1_y_5[5]
+FAILED tests/test_tasks.py::test_ca13_prioridad_fuera_de_rango_devuelve_422[0]
+FAILED tests/test_tasks.py::test_ca13_prioridad_fuera_de_rango_devuelve_422[6]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[3.0]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[3.5]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[3]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[alta]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[True]
+FAILED tests/test_tasks.py::test_ca14_prioridad_no_entera_estricta_devuelve_422[None]
+FAILED tests/test_tasks.py::test_ca15_fecha_limite_hoy_o_futura_devuelve_201[hoy]
+FAILED tests/test_tasks.py::test_ca15_fecha_limite_hoy_o_futura_devuelve_201[manana]
+FAILED tests/test_tasks.py::test_ca15_fecha_limite_hoy_o_futura_devuelve_201[futura]
+FAILED tests/test_tasks.py::test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[20/10/2026]
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T10:00:00]
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-02-30]
+FAILED tests/test_tasks.py::test_ca18_fecha_limite_omitida_o_null_se_guarda_null[omitida]
+FAILED tests/test_tasks.py::test_ca18_fecha_limite_omitida_o_null_se_guarda_null[null]
+FAILED tests/test_tasks.py::test_ca19_la_referencia_es_el_reloj_del_servidor
+FAILED tests/test_tasks.py::test_ca20_responsable_existente_devuelve_201 - as...
+FAILED tests/test_tasks.py::test_ca21_responsable_inexistente_devuelve_404 - ...
+FAILED tests/test_tasks.py::test_ca22_responsable_con_forma_invalida_devuelve_422[0]
+FAILED tests/test_tasks.py::test_ca22_responsable_con_forma_invalida_devuelve_422[-1]
+FAILED tests/test_tasks.py::test_ca22_responsable_con_forma_invalida_devuelve_422[1]
+FAILED tests/test_tasks.py::test_ca22_responsable_con_forma_invalida_devuelve_422[1.0]
+FAILED tests/test_tasks.py::test_ca22_responsable_con_forma_invalida_devuelve_422[True]
+FAILED tests/test_tasks.py::test_ca23_responsable_null_explicito_queda_sin_responsable
+FAILED tests/test_tasks.py::test_ca24_la_forma_gana_al_responsable_inexistente
+FAILED tests/test_tasks.py::test_ca25_la_fecha_pasada_gana_al_responsable_inexistente
+FAILED tests/test_tasks.py::test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea
+FAILED tests/test_tasks.py::test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado
+FAILED tests/test_tasks.py::test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409
+FAILED tests/test_tasks.py::test_ca29_un_fallo_no_guarda_la_clave[tras_404]
+FAILED tests/test_tasks.py::test_ca29_un_fallo_no_guarda_la_clave[tras_422]
+FAILED tests/test_tasks.py::test_ca30_cuerpo_invalido_con_clave_usada_devuelve_422
+FAILED tests/test_tasks.py::test_ca31_la_clave_distingue_mayusculas - assert ...
+FAILED tests/test_tasks.py::test_ca32_longitud_de_la_clave_entre_1_y_64[1] - ...
+FAILED tests/test_tasks.py::test_ca32_longitud_de_la_clave_entre_1_y_64[64]
+FAILED tests/test_tasks.py::test_ca32_longitud_de_la_clave_entre_1_y_64[vacia]
+FAILED tests/test_tasks.py::test_ca32_longitud_de_la_clave_entre_1_y_64[65]
+FAILED tests/test_tasks.py::test_ca33_sin_clave_no_hay_deduplicacion - assert...
+FAILED tests/test_tasks.py::test_ca34_listado_vacio_devuelve_lista_vacia - as...
+FAILED tests/test_tasks.py::test_ca35_listado_completo_ordenado_por_id - asse...
+FAILED tests/test_tasks.py::test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[999]
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[0]
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[-1]
+FAILED tests/test_tasks.py::test_ca38_filtro_no_entero_devuelve_422 - assert ...
+FAILED tests/test_tasks.py::test_ca39_consultar_tarea_existente_devuelve_la_misma_tarea
+FAILED tests/test_tasks.py::test_ca40_consultar_tarea_inexistente_devuelve_404[999]
+FAILED tests/test_tasks.py::test_ca40_consultar_tarea_inexistente_devuelve_404[0]
+FAILED tests/test_tasks.py::test_ca40_consultar_tarea_inexistente_devuelve_404[-1]
+FAILED tests/test_tasks.py::test_ca41_task_id_no_entero_devuelve_422 - assert...
+FAILED tests/test_tasks.py::test_ca42_reset_limpia_tareas_y_claves - Assertio...
+FAILED tests/test_tasks.py::test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista

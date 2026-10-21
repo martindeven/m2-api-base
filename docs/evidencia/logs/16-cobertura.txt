@@ -1,0 +1,25 @@
+........................................................................ [ 63%]
+.........................................                                [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                  Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------
+core/__init__.py          0      0      0      0   100%
+core/clock.py             5      0      0      0   100%
+core/errors.py            9      0      0      0   100%
+main.py                   9      1      0      0    89%   18
+tasks/__init__.py         0      0      0      0   100%
+tasks/repository.py      25      0      0      0   100%
+tasks/routes.py          15      0      0      0   100%
+tasks/schemas.py         33      0      6      0   100%
+tasks/service.py         38      0     16      0   100%
+users/__init__.py         0      0      0      0   100%
+users/repository.py      23      0      2      0   100%
+users/routes.py          13      0      0      0   100%
+users/schemas.py          9      0      0      0   100%
+users/service.py         14      0      4      0   100%
+-----------------------------------------------------------------
+TOTAL                   193      1     28      0    99%
+Required test coverage of 90.0% reached. Total coverage: 99.55%
+113 passed in 1.09s

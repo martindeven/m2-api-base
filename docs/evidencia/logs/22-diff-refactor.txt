@@ -1,0 +1,143 @@
+diff --git a/tasks/routes.py b/tasks/routes.py
+index ee4159c..0a41fe1 100644
+--- a/tasks/routes.py
++++ b/tasks/routes.py
+@@ -6,7 +6,12 @@ negocio; la función delega en `service.py`, que levanta los errores con `core.e
+ from fastapi import APIRouter, Header, Response, status
+ 
+ from tasks import service
+-from tasks.schemas import Task, TaskCreate
++from tasks.schemas import (
++    IDEMPOTENCY_KEY_MAX_LENGTH,
++    IDEMPOTENCY_KEY_MIN_LENGTH,
++    Task,
++    TaskCreate,
++)
+ 
+ router = APIRouter(prefix="/tasks", tags=["tasks"])
+ 
+@@ -26,7 +31,10 @@ def create_task(
+     data: TaskCreate,
+     response: Response,
+     idempotency_key: str | None = Header(
+-        default=None, alias="Idempotency-Key", min_length=1, max_length=64
++        default=None,
++        alias="Idempotency-Key",
++        min_length=IDEMPOTENCY_KEY_MIN_LENGTH,
++        max_length=IDEMPOTENCY_KEY_MAX_LENGTH,
+     ),
+ ) -> Task:
+     # service decide si se ha creado (201) o es una repetición idempotente (200).
+diff --git a/tasks/schemas.py b/tasks/schemas.py
+index fa560f0..fd22700 100644
+--- a/tasks/schemas.py
++++ b/tasks/schemas.py
+@@ -11,15 +11,24 @@ from pydantic import BaseModel, Field, field_validator
+ 
+ TITLE_MIN_LENGTH = 3
+ TITLE_MAX_LENGTH = 120
++DESCRIPTION_MAX_LENGTH = 1000
++PRIORITY_MIN = 1
++PRIORITY_MAX = 5
++PRIORITY_DEFAULT = 3
++ASSIGNEE_ID_MIN = 1
++IDEMPOTENCY_KEY_MIN_LENGTH = 1
++IDEMPOTENCY_KEY_MAX_LENGTH = 64
+ DATE_ONLY_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+ 
+ 
+ class TaskBase(BaseModel):
+     title: str
+-    description: str | None = Field(default=None, max_length=1000)
+-    priority: Annotated[int, Field(strict=True, ge=1, le=5)] = 3
++    description: str | None = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
++    priority: Annotated[int, Field(strict=True, ge=PRIORITY_MIN, le=PRIORITY_MAX)] = (
++        PRIORITY_DEFAULT
++    )
+     due_date: date | None = None
+-    assignee_id: Annotated[int, Field(strict=True, ge=1)] | None = None
++    assignee_id: Annotated[int, Field(strict=True, ge=ASSIGNEE_ID_MIN)] | None = None
+ 
+     @field_validator("title")
+     @classmethod
+diff --git a/tasks/service.py b/tasks/service.py
+index c47c6d6..be6f663 100644
+--- a/tasks/service.py
++++ b/tasks/service.py
+@@ -6,6 +6,7 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es
+ """
+ import hashlib
+ import json
++from datetime import date
+ 
+ from core import clock, errors
+ from tasks import repository
+@@ -32,24 +33,45 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bo
+         HTTPException: 422 si `due_date` es anterior a hoy (UTC), 409 si la clave ya
+             existe con otra huella, 404 si el responsable no existe.
+     """
+-    if data.due_date is not None and data.due_date < clock.today():
+-        raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
++    _ensure_due_date_not_past(data.due_date)
+ 
+     fingerprint = _fingerprint(data)
+-    if idempotency_key is not None:
+-        stored = repository.find_by_idempotency_key(idempotency_key)
+-        if stored is not None:
+-            stored_fingerprint, stored_task = stored
+-            if stored_fingerprint != fingerprint:
+-                raise errors.conflict(
+-                    f"clave de idempotencia ya existe: {idempotency_key}"
+-                )
+-            return stored_task, False
+-
+-    if data.assignee_id is not None:
++    replayed_task = _find_replayed_task(idempotency_key, fingerprint)
++    if replayed_task is not None:
++        return replayed_task, False
++
++    _ensure_assignee_exists(data.assignee_id)
++    return _save_task(data, idempotency_key, fingerprint), True
++
++
++def _ensure_due_date_not_past(due_date: date | None) -> None:
++    """Regla de dominio: la fecha límite no puede ser anterior a hoy (UTC)."""
++    if due_date is not None and due_date < clock.today():
++        raise errors.invalid_request(PAST_DUE_DATE_MESSAGE)
++
++
++def _find_replayed_task(idempotency_key: str | None, fingerprint: str) -> Task | None:
++    """Tarea original si es una repetición idempotente; 409 si la huella no coincide."""
++    if idempotency_key is None:
++        return None
++    stored = repository.find_by_idempotency_key(idempotency_key)
++    if stored is None:
++        return None
++    stored_fingerprint, stored_task = stored
++    if stored_fingerprint != fingerprint:
++        raise errors.already_exists("clave de idempotencia", idempotency_key)
++    return stored_task
++
++
++def _ensure_assignee_exists(assignee_id: int | None) -> None:
++    """Regla de dominio: el responsable, si se indica, existe en `users`."""
++    if assignee_id is not None:
+         # get_user lanza errors.not_found("usuario", assignee_id) si no existe.
+-        users_service.get_user(data.assignee_id)
++        users_service.get_user(assignee_id)
++
+ 
++def _save_task(data: TaskCreate, idempotency_key: str | None, fingerprint: str) -> Task:
++    """Persiste la tarea y, si hay clave, la guarda junto con su huella."""
+     task = repository.add(
+         title=data.title,
+         description=data.description,
+@@ -60,7 +82,7 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bo
+     # La clave solo se guarda tras crear: un 404 o 422 previo no la reserva (CA-29).
+     if idempotency_key is not None:
+         repository.save_idempotency_key(idempotency_key, fingerprint, task)
+-    return task, True
++    return task
+ 
+ 
+ def _fingerprint(data: TaskCreate) -> str:

@@ -1,0 +1,11 @@
+    tasks.service.x__fingerprint__mutmut_3: survived
+    tasks.service.x__fingerprint__mutmut_5: survived
+    tasks.service.x__fingerprint__mutmut_10: survived
+    tasks.service.x__fingerprint__mutmut_11: survived
+    tasks.service.x__fingerprint__mutmut_13: survived
+    tasks.service.x__fingerprint__mutmut_14: survived
+    tasks.service.x__fingerprint__mutmut_15: survived
+    tasks.service.x__fingerprint__mutmut_16: survived
+    tasks.service.x__fingerprint__mutmut_20: survived
+    tasks.schemas.x__decode_utf8_header__mutmut_5: survived
+    tasks.schemas.x__decode_utf8_header__mutmut_7: survived

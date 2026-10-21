@@ -4,8 +4,7 @@ Sustituye a una base de datos real para que el proyecto sea ejecutable sin
 infraestructura. La API pública de este módulo (las funciones de abajo) imita la
 de un repositorio real: la capa de `service.py` no debería notar la diferencia.
 """
-from datetime import datetime, timezone
-
+from core import clock
 from users.schemas import User
 
 _users: dict[int, User] = {}
@@ -25,7 +24,7 @@ def add(*, name: str, email: str) -> User:
         id=_next_id,
         name=name,
         email=email,
-        created_at=datetime.now(timezone.utc),
+        created_at=clock.now(),
     )
     _users[user.id] = user
     _next_id += 1

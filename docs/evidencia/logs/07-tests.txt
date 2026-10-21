@@ -1,0 +1,686 @@
+.....................................F..F...F.F.......FFFFF..........FFF [ 82%]
+F.......F......                                                          [100%]
+=================================== FAILURES ===================================
+________ test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto _________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f34928d0>
+
+    def test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "due_date": "2026-10-19"}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:242: AssertionError
+_ test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00] _
+
+client = <starlette.testclient.TestClient object at 0x7fb5f3492cf0>
+due_date = '2026-10-20T00:00:00'
+
+    @pytest.mark.parametrize(
+        "due_date", ["20/10/2026", "2026-10-20T10:00:00", "2026-10-20T00:00:00", "2026-02-30"]
+    )
+    def test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422(
+        client: TestClient, due_date: str
+    ) -> None:
+        body = {"title": "Revisar backups", "due_date": due_date}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:256: AssertionError
+_______________ test_ca19_la_referencia_es_el_reloj_del_servidor _______________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f34a5040>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fb5f34a6630>
+
+    def test_ca19_la_referencia_es_el_reloj_del_servidor(
+        client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("core.clock.today", lambda: date(2026, 10, 21))
+        body = {"title": "Revisar backups", "due_date": "2026-10-20"}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:280: AssertionError
+________________ test_ca21_responsable_inexistente_devuelve_404 ________________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f34930b0>
+
+    def test_ca21_responsable_inexistente_devuelve_404(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 999}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 404
+E       assert 201 == 404
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:301: AssertionError
+__________ test_ca25_la_fecha_pasada_gana_al_responsable_inexistente ___________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f3427b90>
+
+    def test_ca25_la_fecha_pasada_gana_al_responsable_inexistente(client: TestClient) -> None:
+        body = {"title": "Revisar backups", "due_date": "2026-10-19", "assignee_id": 999}
+    
+        response = _post(client, body)
+    
+>       assert response.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:341: AssertionError
+_____ test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea _____
+
+client = <starlette.testclient.TestClient object at 0x7fb5f34a5670>
+
+    def test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea(
+        client: TestClient,
+    ) -> None:
+        body = {"title": "Revisar backups", "assignee_id": 1}
+        first = _post(client, body, key="K")
+    
+        repeated = _post(client, body, key="K")
+    
+        assert first.status_code == 201
+>       assert repeated.status_code == 200
+E       assert 201 == 200
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:357: AssertionError
+__________ test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado __________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f3492b70>
+
+    def test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        repeated = _post(client, {"priority": 3, "title": " Revisar "}, key="K")
+    
+        assert first.status_code == 201
+>       assert repeated.status_code == 200
+E       assert 201 == 200
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:368: AssertionError
+_____________ test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409 _____________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f2308170>
+
+    def test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409(client: TestClient) -> None:
+        first = _post(client, {"title": "Revisar"}, key="K")
+    
+        response = _post(client, {"title": "Otra tarea"}, key="K")
+    
+        assert first.status_code == 201
+>       assert response.status_code == 409
+E       assert 201 == 409
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:379: AssertionError
+_______________ test_ca29_un_fallo_no_guarda_la_clave[tras_404] ________________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f23086e0>
+failing_body = {'title': 'Revisar', 'assignee_id': 999}, failing_status = 404
+
+    @pytest.mark.parametrize(
+        ("failing_body", "failing_status"),
+        [({"title": "Revisar", "assignee_id": 999}, 404), ({"title": "ab"}, 422)],
+        ids=["tras_404", "tras_422"],
+    )
+    def test_ca29_un_fallo_no_guarda_la_clave(
+        client: TestClient, failing_body: dict, failing_status: int
+    ) -> None:
+        first = _post(client, failing_body, key="K")
+    
+        response = _post(client, {"title": "Revisar backups"}, key="K")
+    
+>       assert first.status_code == failing_status
+E       assert 201 == 404
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:396: AssertionError
+__________ test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas ___________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f230a6c0>
+
+    def test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas(client: TestClient) -> None:
+        for assignee_id in [1, 2, 1, None]:
+            _post(client, {"title": "Revisar backups", "assignee_id": assignee_id})
+    
+>       response = client.get("/tasks", params={"assignee_id": 1})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_tasks.py:476: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_client.py:1053: in get
+    return self.request(
+.venv/lib/python3.12/site-packages/starlette/testclient.py:518: in request
+    return super().request(
+.venv/lib/python3.12/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_client.py:928: in send
+    raise exc
+.venv/lib/python3.12/site-packages/httpx/_client.py:922: in send
+    response.read()
+.venv/lib/python3.12/site-packages/httpx/_models.py:881: in read
+    self._content = b"".join(self.iter_bytes())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_models.py:897: in iter_bytes
+    for raw_bytes in self.iter_raw():
+.venv/lib/python3.12/site-packages/httpx/_models.py:951: in iter_raw
+    for raw_stream_bytes in self.stream:
+.venv/lib/python3.12/site-packages/httpx/_client.py:153: in __iter__
+    for chunk in self._stream:
+.venv/lib/python3.12/site-packages/starlette/testclient.py:384: in iter_body
+    exit_stack.close()
+/usr/lib/python3.12/contextlib.py:618: in close
+    self.__exit__(None, None, None)
+/usr/lib/python3.12/contextlib.py:610: in __exit__
+    raise exc_details[1]
+/usr/lib/python3.12/contextlib.py:595: in __exit__
+    if cb(*exc_details):
+       ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:399: in close_app
+    raise exception
+.venv/lib/python3.12/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:366: in run_app
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/applications.py:1194: in __call__
+    await super().__call__(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/routing.py:678: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2809: in app
+    await route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1837: in handle
+    await self.original_router.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2892: in handle
+    await included_router._handle_selected(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1863: in _handle_selected
+    await original_route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1326: in handle
+    await effective_context.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:166: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:152: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/routing.py:745: in app
+    raw_response = await run_endpoint_function(
+.venv/lib/python3.12/site-packages/fastapi/routing.py:374: in run_endpoint_function
+    return await run_in_threadpool(
+.venv/lib/python3.12/site-packages/starlette/concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+tasks/routes.py:16: in list_tasks
+    return service.list_tasks(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tasks/service.py:75: in list_tasks
+    return repository.list_by_assignee(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+assignee_id = 1
+
+    def list_by_assignee(assignee_id: int) -> list[Task]:
+        # TODO(CA-36, CA-37): tareas de ese responsable, por id ascendente; [] si no hay.
+>       raise NotImplementedError
+E       NotImplementedError
+
+tasks/repository.py:53: NotImplementedError
+_________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[999] _________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f2308590>
+assignee_id = 999
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+>       response = client.get("/tasks", params={"assignee_id": assignee_id})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_tasks.py:489: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_client.py:1053: in get
+    return self.request(
+.venv/lib/python3.12/site-packages/starlette/testclient.py:518: in request
+    return super().request(
+.venv/lib/python3.12/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_client.py:928: in send
+    raise exc
+.venv/lib/python3.12/site-packages/httpx/_client.py:922: in send
+    response.read()
+.venv/lib/python3.12/site-packages/httpx/_models.py:881: in read
+    self._content = b"".join(self.iter_bytes())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_models.py:897: in iter_bytes
+    for raw_bytes in self.iter_raw():
+.venv/lib/python3.12/site-packages/httpx/_models.py:951: in iter_raw
+    for raw_stream_bytes in self.stream:
+.venv/lib/python3.12/site-packages/httpx/_client.py:153: in __iter__
+    for chunk in self._stream:
+.venv/lib/python3.12/site-packages/starlette/testclient.py:384: in iter_body
+    exit_stack.close()
+/usr/lib/python3.12/contextlib.py:618: in close
+    self.__exit__(None, None, None)
+/usr/lib/python3.12/contextlib.py:610: in __exit__
+    raise exc_details[1]
+/usr/lib/python3.12/contextlib.py:595: in __exit__
+    if cb(*exc_details):
+       ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:399: in close_app
+    raise exception
+.venv/lib/python3.12/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:366: in run_app
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/applications.py:1194: in __call__
+    await super().__call__(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/routing.py:678: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2809: in app
+    await route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1837: in handle
+    await self.original_router.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2892: in handle
+    await included_router._handle_selected(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1863: in _handle_selected
+    await original_route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1326: in handle
+    await effective_context.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:166: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:152: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/routing.py:745: in app
+    raw_response = await run_endpoint_function(
+.venv/lib/python3.12/site-packages/fastapi/routing.py:374: in run_endpoint_function
+    return await run_in_threadpool(
+.venv/lib/python3.12/site-packages/starlette/concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+tasks/routes.py:16: in list_tasks
+    return service.list_tasks(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tasks/service.py:75: in list_tasks
+    return repository.list_by_assignee(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+assignee_id = 999
+
+    def list_by_assignee(assignee_id: int) -> list[Task]:
+        # TODO(CA-36, CA-37): tareas de ese responsable, por id ascendente; [] si no hay.
+>       raise NotImplementedError
+E       NotImplementedError
+
+tasks/repository.py:53: NotImplementedError
+__________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[0] __________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f3493e90>
+assignee_id = 0
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+>       response = client.get("/tasks", params={"assignee_id": assignee_id})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_tasks.py:489: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_client.py:1053: in get
+    return self.request(
+.venv/lib/python3.12/site-packages/starlette/testclient.py:518: in request
+    return super().request(
+.venv/lib/python3.12/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_client.py:928: in send
+    raise exc
+.venv/lib/python3.12/site-packages/httpx/_client.py:922: in send
+    response.read()
+.venv/lib/python3.12/site-packages/httpx/_models.py:881: in read
+    self._content = b"".join(self.iter_bytes())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_models.py:897: in iter_bytes
+    for raw_bytes in self.iter_raw():
+.venv/lib/python3.12/site-packages/httpx/_models.py:951: in iter_raw
+    for raw_stream_bytes in self.stream:
+.venv/lib/python3.12/site-packages/httpx/_client.py:153: in __iter__
+    for chunk in self._stream:
+.venv/lib/python3.12/site-packages/starlette/testclient.py:384: in iter_body
+    exit_stack.close()
+/usr/lib/python3.12/contextlib.py:618: in close
+    self.__exit__(None, None, None)
+/usr/lib/python3.12/contextlib.py:610: in __exit__
+    raise exc_details[1]
+/usr/lib/python3.12/contextlib.py:595: in __exit__
+    if cb(*exc_details):
+       ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:399: in close_app
+    raise exception
+.venv/lib/python3.12/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:366: in run_app
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/applications.py:1194: in __call__
+    await super().__call__(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/routing.py:678: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2809: in app
+    await route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1837: in handle
+    await self.original_router.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2892: in handle
+    await included_router._handle_selected(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1863: in _handle_selected
+    await original_route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1326: in handle
+    await effective_context.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:166: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:152: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/routing.py:745: in app
+    raw_response = await run_endpoint_function(
+.venv/lib/python3.12/site-packages/fastapi/routing.py:374: in run_endpoint_function
+    return await run_in_threadpool(
+.venv/lib/python3.12/site-packages/starlette/concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+tasks/routes.py:16: in list_tasks
+    return service.list_tasks(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tasks/service.py:75: in list_tasks
+    return repository.list_by_assignee(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+assignee_id = 0
+
+    def list_by_assignee(assignee_id: int) -> list[Task]:
+        # TODO(CA-36, CA-37): tareas de ese responsable, por id ascendente; [] si no hay.
+>       raise NotImplementedError
+E       NotImplementedError
+
+tasks/repository.py:53: NotImplementedError
+_________ test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[-1] __________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f2312ff0>
+assignee_id = -1
+
+    @pytest.mark.parametrize("assignee_id", [999, 0, -1])
+    def test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia(
+        client: TestClient, assignee_id: int
+    ) -> None:
+        _post(client, {"title": "Revisar backups", "assignee_id": 1})
+        _post(client, {"title": "Rotar certificados"})
+    
+>       response = client.get("/tasks", params={"assignee_id": assignee_id})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_tasks.py:489: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/httpx/_client.py:1053: in get
+    return self.request(
+.venv/lib/python3.12/site-packages/starlette/testclient.py:518: in request
+    return super().request(
+.venv/lib/python3.12/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_client.py:928: in send
+    raise exc
+.venv/lib/python3.12/site-packages/httpx/_client.py:922: in send
+    response.read()
+.venv/lib/python3.12/site-packages/httpx/_models.py:881: in read
+    self._content = b"".join(self.iter_bytes())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/httpx/_models.py:897: in iter_bytes
+    for raw_bytes in self.iter_raw():
+.venv/lib/python3.12/site-packages/httpx/_models.py:951: in iter_raw
+    for raw_stream_bytes in self.stream:
+.venv/lib/python3.12/site-packages/httpx/_client.py:153: in __iter__
+    for chunk in self._stream:
+.venv/lib/python3.12/site-packages/starlette/testclient.py:384: in iter_body
+    exit_stack.close()
+/usr/lib/python3.12/contextlib.py:618: in close
+    self.__exit__(None, None, None)
+/usr/lib/python3.12/contextlib.py:610: in __exit__
+    raise exc_details[1]
+/usr/lib/python3.12/contextlib.py:595: in __exit__
+    if cb(*exc_details):
+       ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:399: in close_app
+    raise exception
+.venv/lib/python3.12/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/starlette/testclient.py:366: in run_app
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/applications.py:1194: in __call__
+    await super().__call__(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/routing.py:678: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2809: in app
+    await route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1837: in handle
+    await self.original_router.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:2892: in handle
+    await included_router._handle_selected(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1863: in _handle_selected
+    await original_route.handle(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:1326: in handle
+    await effective_context.app(scope, receive, send)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:166: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv/lib/python3.12/site-packages/fastapi/routing.py:152: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/routing.py:745: in app
+    raw_response = await run_endpoint_function(
+.venv/lib/python3.12/site-packages/fastapi/routing.py:374: in run_endpoint_function
+    return await run_in_threadpool(
+.venv/lib/python3.12/site-packages/starlette/concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+tasks/routes.py:16: in list_tasks
+    return service.list_tasks(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tasks/service.py:75: in list_tasks
+    return repository.list_by_assignee(assignee_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+assignee_id = -1
+
+    def list_by_assignee(assignee_id: int) -> list[Task]:
+        # TODO(CA-36, CA-37): tareas de ese responsable, por id ascendente; [] si no hay.
+>       raise NotImplementedError
+E       NotImplementedError
+
+tasks/repository.py:53: NotImplementedError
+__________ test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista ___________
+
+client = <starlette.testclient.TestClient object at 0x7fb5f3492e70>
+
+    def test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista(client: TestClient) -> None:
+        _post(client, {"title": "Revisar"}, key="K")
+    
+        past_date = _post(client, {"title": "Revisar backups", "due_date": "2026-10-19"})
+        missing_assignee = _post(client, {"title": "Revisar backups", "assignee_id": 999})
+        conflict = _post(client, {"title": "Otra tarea"}, key="K")
+        missing_task = client.get("/tasks/999")
+        shape_error = _post(client, {"title": "ab"})
+    
+>       assert past_date.status_code == 422
+E       assert 201 == 422
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests/test_tasks.py:549: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tasks.py::test_ca16_fecha_limite_ayer_devuelve_422_con_detalle_en_texto
+FAILED tests/test_tasks.py::test_ca17_fecha_limite_con_formato_o_fecha_invalidos_devuelve_422[2026-10-20T00:00:00]
+FAILED tests/test_tasks.py::test_ca19_la_referencia_es_el_reloj_del_servidor
+FAILED tests/test_tasks.py::test_ca21_responsable_inexistente_devuelve_404 - ...
+FAILED tests/test_tasks.py::test_ca25_la_fecha_pasada_gana_al_responsable_inexistente
+FAILED tests/test_tasks.py::test_ca26_misma_clave_y_mismo_cuerpo_devuelve_200_con_la_misma_tarea
+FAILED tests/test_tasks.py::test_ca27_la_huella_se_calcula_sobre_el_cuerpo_normalizado
+FAILED tests/test_tasks.py::test_ca28_misma_clave_y_cuerpo_distinto_devuelve_409
+FAILED tests/test_tasks.py::test_ca29_un_fallo_no_guarda_la_clave[tras_404]
+FAILED tests/test_tasks.py::test_ca36_filtro_por_responsable_devuelve_solo_sus_tareas
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[999]
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[0]
+FAILED tests/test_tasks.py::test_ca37_filtro_sin_coincidencias_devuelve_lista_vacia[-1]
+FAILED tests/test_tasks.py::test_ca43_errores_de_dominio_en_texto_y_de_forma_en_lista
