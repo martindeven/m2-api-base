@@ -2354,7 +2354,7 @@
   | 7 | `tasks/schemas.py:67-68` | `status: str` con `TODO` | Menor |
   | 8 | `tasks/schemas.py:63` | `Task` hereda los validadores de entrada | Menor |
   | 9 | `tasks/service.py:66-70` | 404 del responsable vía `users_service.get_user` | Falso positivo: intencional porque CLAUDE.md (consulta vía `service.py`) y decisión 5 |
-  | 10 | `CLAUDE.md:20` | Tests de `tasks` en 3 archivos de más | **Bloqueante** (convención "un archivo por recurso") |
+  | 10 | `CLAUDE.md:20` | Tests de `tasks` en 3 archivos de más | **Bloqueante** (convención "un archivo por recurso") · corregido |
   | 11 | `users/repository.py:28` | `datetime.now()` directo (código previo) | **Bloqueante** (convención de `core/clock.py`) |
   | 12 | `tests/test_tasks.py:20-22` | `created_at` no se fija en los tests | Menor |
   | 13 | — | Sin test de peticiones simultáneas | **Bloqueante** (va con #1) · corregido |
@@ -2390,8 +2390,10 @@
     decisión propuesta por la IA y aceptada.
   - Acepté corregir solo el primer bloqueante (#1, junto con su test #13) y parar.
   - Después pedí corregir solo el siguiente bloqueante (#4) y parar. La línea de
-    `CHANGELOG.md:14` que anuncia `conflict()` (#5, menor) no se tocó. #10 y #11 quedan
-    pendientes.
+    `CHANGELOG.md:14` que anuncia `conflict()` (#5, menor) no se tocó.
+  - Para el #10, la IA eligió fusionar los tests en `tests/test_tasks.py` en vez de cambiar la
+    convención de CLAUDE.md, porque es la opción conservadora. Lo aprobé así. #11 queda
+    pendiente.
 
 - **Iteraciones:**
   - **Iteración 1 · arreglo del bloqueante #1**
@@ -2438,6 +2440,44 @@
       - `pytest -q` queda en verde, con 115 tests y ningún fallo.
       - `ruff check .` da "All checks passed!".
       - Quedan los bloqueantes #10 y #11.
+  - **Iteración 3 · arreglo del bloqueante #10**
+
+    ```text
+    Corrige el siguiente bloqueante de la tabla, ejecuta pytest -q y ruff check . y para.
+    Si no quedan bloqueantes, dímelo y no cambies nada.
+    ```
+
+    - **Respuesta:**
+      - Identificó el #10 como siguiente bloqueante y propuso fusionar los tests, en vez de
+        cambiar la regla "un archivo por recurso" de CLAUDE.md.
+      - Fusionó `tests/test_tasks_service.py` (23 tests), `tests/test_tasks_integration.py`
+        (2) y `tests/test_clock.py` (2) en `tests/test_tasks.py`, en tres secciones nuevas.
+        Borró los tres archivos.
+      - Los tests del service van en `class TestService`, con su fixture autouse
+        `user_lookups` (el fake de `users.service.get_user`) dentro de la clase. Así el fake
+        no rompe el test de integración, que crea el usuario 5.
+      - Los tests de reloj llaman a `_real_today`, guardado al importar, porque la fixture
+        `_fixed_today` del archivo sustituye `core.clock.today`.
+      - Unió imports y constantes y amplió el docstring del módulo. No tocó el contenido de
+        ningún test, el código de producción, `conftest.py` ni `pyproject.toml`.
+    - **Ajuste resultante:**
+      - `pytest --collect-only -q`: antes, 82 + 23 + 2 + 2 (tasks) + 6 (users) = 115; después,
+        109 en `test_tasks.py` + 6 = 115.
+      - `ruff check .` marcó dos firmas de más de 100 caracteres. Se partieron en varias
+        líneas y quedó "All checks passed!".
+      - `pytest -q` queda en verde. Queda el bloqueante #11.
+
+  ```python
+  class TestService:
+      """`tasks/service.py` con `users.service.get_user` sustituido por un fake."""
+
+      @pytest.fixture(autouse=True)
+      def user_lookups(self, monkeypatch: pytest.MonkeyPatch) -> list[int]:
+          ...
+
+  # `today()` real, guardado al importar: `_fixed_today` sustituye `core.clock.today`.
+  _real_today = clock.today
+  ```
 
 - **Validación:**
   - Arreglo 1: `pytest -q` → 115 tests en verde, sin fallos. La cifra sale de contar los
@@ -2445,7 +2485,10 @@
     Log: [`logs/23-tests-arreglo1.txt`](logs/23-tests-arreglo1.txt)
   - Arreglo 2: `pytest -q` → 115 tests en verde, sin fallos (72 + 43 puntos).
     Log: [`logs/23-tests-arreglo2.txt`](logs/23-tests-arreglo2.txt)
+  - Arreglo 3: `pytest -q` → 115 tests en verde, sin fallos (72 + 43 puntos).
+    Log: [`logs/23-tests-arreglo3.txt`](logs/23-tests-arreglo3.txt)
 - **Captura:** N/A
 - **Commit:**
   - Arreglo 1: `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
   - Arreglo 2: `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`
+  - Arreglo 3: `fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md`
