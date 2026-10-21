@@ -290,6 +290,28 @@ def test_regresion_fecha_limite_con_hora_a_medianoche_devuelve_422(client: TestC
 
 
 @pytest.mark.parametrize(
+    ("body", "error_type"),
+    [
+        ({"title": "ab"}, "string_too_short"),
+        ({"title": "a" * 121}, "string_too_long"),
+        ({"title": "Revisar backups", "due_date": "20/10/2026"}, "date_type"),
+        ({"title": "Revisar backups", "due_date": "2026-10-20T00:00:00"}, "date_type"),
+    ],
+    ids=["titulo_corto", "titulo_largo", "fecha_formato", "fecha_con_hora"],
+)
+def test_regresion_decision_1_errores_de_forma_con_mensaje_de_pydantic_por_defecto(
+    client: TestClient, body: dict, error_type: str
+) -> None:
+    # Decisión 1: sin mensaje propio en español para los errores de forma.
+    response = _post(client, body)
+
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["type"] == error_type
+    assert not error["msg"].startswith("Value error")
+
+
+@pytest.mark.parametrize(
     "body",
     [{"title": "Revisar backups"}, {"title": "Revisar backups", "due_date": None}],
     ids=["omitida", "null"],
@@ -468,6 +490,26 @@ def test_ca32_longitud_de_la_clave_entre_1_y_64(
         assert response.json()["title"] == "Revisar backups"
     else:
         assert isinstance(response.json()["detail"], list)
+
+
+@pytest.mark.parametrize(
+    ("key", "expected_status"),
+    [("ñ" * 64, 201), ("ñ" * 65, 422)],
+    ids=["64_no_ascii", "65_no_ascii"],
+)
+def test_regresion_decision_10_la_clave_se_cuenta_en_caracteres_no_en_bytes(
+    client: TestClient, key: str, expected_status: int
+) -> None:
+    # "ñ" ocupa 2 bytes en UTF-8: contada en bytes, la clave de 64 caracteres daría 422.
+    headers = {"Idempotency-Key": key.encode("utf-8")}
+
+    response = client.post("/tasks", json={"title": "Revisar backups"}, headers=headers)
+
+    assert response.status_code == expected_status
+    if expected_status == 201:
+        repeated = client.post("/tasks", json={"title": "Revisar backups"}, headers=headers)
+        assert repeated.status_code == 200
+        assert repeated.json() == response.json()
 
 
 def test_ca33_sin_clave_no_hay_deduplicacion(client: TestClient) -> None:

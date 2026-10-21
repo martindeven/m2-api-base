@@ -3,6 +3,11 @@
 Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es la
 única que conoce `repository.py`, la que consulta `users` a través de su
 `service.py` y la que decide cuándo algo es un error de dominio (`core.errors`).
+
+Las reglas de forma (tipos, rangos, longitudes) ya las ha aplicado Pydantic cuando
+los datos llegan aquí. Esta capa aplica las reglas de dominio de
+`docs/feature-tasks.md`: fecha límite no pasada, idempotencia con `Idempotency-Key`
+y responsable existente, en el orden de evaluación del spec.
 """
 import hashlib
 import json
@@ -22,19 +27,47 @@ _create_lock = threading.Lock()
 
 
 def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bool]:
-    """Crea una tarea, con idempotencia opcional.
+    """Crea una tarea con estado `"pending"`, con idempotencia opcional.
+
+    Aplica las reglas de dominio en el orden del spec:
+
+    1. La fecha límite no es anterior a hoy (UTC).
+    2. Busca la clave de idempotencia.
+    3. Comprueba que el responsable existe.
+    4. Crea la tarea.
+
+    Con la misma clave y la misma huella del cuerpo normalizado, devuelve la tarea
+    original sin crear otra, aunque las dos peticiones lleguen a la vez. La clave solo
+    se guarda si la tarea se crea: un 404 o un 422 no la reserva.
 
     Args:
-        data: Cuerpo ya validado y normalizado por Pydantic.
-        idempotency_key: Valor de la cabecera `Idempotency-Key`, o None si no se envió.
+        data: Cuerpo ya validado y normalizado por Pydantic (`title` recortado, valores
+            por defecto aplicados).
+        idempotency_key: Valor de la cabecera `Idempotency-Key`, o `None` si no se
+            envió. Sin clave no hay deduplicación.
 
     Returns:
-        La tarea y `created`: `True` si se ha creado, o `False` con la tarea original si
-        es una repetición idempotente (misma clave y misma huella).
+        Una tupla `(task, created)`. `created` es `True` si la tarea se ha creado (la
+        ruta responde 201), o `False` si es una repetición idempotente: misma clave y
+        misma huella, devuelve la tarea original con el mismo `id` y `created_at`, y la
+        ruta responde 200.
 
     Raises:
-        HTTPException: 422 si `due_date` es anterior a hoy (UTC), 409 si la clave ya
-            existe con otra huella, 404 si el responsable no existe.
+        HTTPException: 422 si `due_date` es anterior a hoy (UTC), aunque la petición
+            repita una clave ya guardada. 409 si la clave ya existe con otra huella.
+            404 si `assignee_id` no corresponde a ningún usuario.
+
+    Example:
+        Alta normal y repetición idempotente con la misma clave:
+
+        >>> data = TaskCreate(title="  Revisar backups  ")
+        >>> task, created = create_task(data, idempotency_key="alta-backup-001")
+        >>> task.title, task.status, created
+        ('Revisar backups', 'pending', True)
+        >>> same_body = TaskCreate(title="Revisar backups", priority=3)
+        >>> repeated, created = create_task(same_body, idempotency_key="alta-backup-001")
+        >>> repeated == task, created
+        (True, False)
     """
     _ensure_due_date_not_past(data.due_date)
 
@@ -102,13 +135,15 @@ def get_task(task_id: int) -> Task:
     """Devuelve una tarea por su id.
 
     Args:
-        task_id: Identificador de la tarea.
+        task_id: Identificador de la tarea. Cualquier entero es válido aquí: `0` y los
+            negativos no son un error de forma, simplemente no existen.
 
     Returns:
-        La tarea encontrada.
+        La tarea, igual que se devolvió al crearla.
 
     Raises:
-        HTTPException: 404 si no existe ninguna tarea con ese id.
+        HTTPException: 404 ("tarea no encontrado: <id>") si no existe ninguna tarea
+            con ese id, incluidos `0` y los negativos.
     """
     task = repository.get(task_id)
     if task is None:
@@ -120,10 +155,13 @@ def list_tasks(assignee_id: int | None) -> list[Task]:
     """Lista las tareas por id ascendente, con filtro opcional por responsable.
 
     Args:
-        assignee_id: Si se indica, solo las tareas de ese responsable.
+        assignee_id: Si se indica, solo devuelve las tareas de ese responsable. Es un
+            filtro, no una consulta del usuario: no se comprueba que exista, así que un
+            id inexistente, `0` o un negativo dan una lista vacía y no un 404.
 
     Returns:
-        Lista de tareas; vacía si no hay ninguna (o ninguna coincide con el filtro).
+        Las tareas ordenadas por `id` ascendente. La lista está vacía si no hay tareas o
+        si ninguna coincide con el filtro.
     """
     if assignee_id is None:
         return repository.list_all()

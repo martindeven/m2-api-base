@@ -2531,3 +2531,232 @@
   - Arreglo 2: `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`
   - Arreglo 3: `fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md`
   - Arreglo 4: `fix(tasks): created_at de users desde core/clock.py en lugar de datetime.now()`
+
+## Paso P24 — Docstrings estilo Google
+
+- **Prompt usado:**
+
+  ```text
+  Genera docstrings estilo Google para las funciones públicas de @tasks/service.py,
+  @tasks/repository.py y @core/clock.py, y un docstring de módulo para cada archivo
+  de tasks/ siguiendo el tono de @users/service.py.
+  Cada docstring: qué hace, Args, Returns, Raises (con código HTTP) y un Example
+  breve en las funciones clave (create_task: alta normal y repetición idempotente).
+  Describe lo que el código DEBE hacer según @docs/feature-tasks.md; si encuentras
+  una diferencia entre el código y la especificación, NO la documentes como correcta:
+  avísame. No cambies la lógica. No escribas docstrings triviales.
+  Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - Escribió docstrings Google para las funciones públicas:
+    - `tasks/service.py`: `create_task`, `get_task` y `list_tasks`;
+    - `tasks/repository.py`: las 7 funciones (`add`, `get`, `list_all`, `list_by_assignee`,
+      `find_by_idempotency_key`, `save_idempotency_key` y `reset`);
+    - `core/clock.py`: `now` y `today`, con el caso de las 23:59:59 UTC frente a UTC+2.
+  - Escribió o amplió el docstring de módulo de los cinco archivos de `tasks/`. El de
+    `__init__.py` es nuevo, porque el archivo estaba vacío.
+  - Los Raises indican el código HTTP: en `create_task`, 422 por fecha pasada (también al
+    repetir la clave, según A2), 409 por otra huella y 404 por responsable inexistente; en
+    `get_task`, 404 también con `0` y negativos.
+  - No añadió docstrings nuevos a las funciones privadas, que ya tenían uno de una línea,
+    ni a las rutas, porque FastAPI los publicaría en Swagger.
+  - El Example de `create_task` se ejecutó como doctest con
+    `pytest --doctest-modules tasks/service.py` y pasó.
+  - Antes de documentar, comprobó con TestClient y con un uvicorn real lo que el spec da por
+    hecho. No documentó como correctas las diferencias que encontró:
+    1. **Decisión 10:** la longitud de `Idempotency-Key` se contaba en bytes, porque
+       Starlette lee las cabeceras como latin-1. Una clave de 64 "ñ" daba 422 y debía dar
+       201.
+    2. **Decisión 1:** los 422 de forma de `title` y `due_date` llevaban mensajes propios en
+       español ("el título debe tener entre 3 y 120 caracteres tras recortar" y "la fecha
+       límite debe tener el formato YYYY-MM-DD"), en vez del mensaje de Pydantic por
+       defecto.
+    3. **Espacios en la clave:** sin comprobar con un servidor real si uvicorn los recorta
+       (TestClient los conserva).
+    4. **Menores abiertos de P23:** `status: str` (#7) y un `datetime` pasado desde Python en
+       `due_date` (#6).
+  - Docstring de `create_task`:
+
+  ```python
+      """Crea una tarea con estado `"pending"`, con idempotencia opcional.
+
+      Aplica las reglas de dominio en el orden del spec:
+
+      1. La fecha límite no es anterior a hoy (UTC).
+      2. Busca la clave de idempotencia.
+      3. Comprueba que el responsable existe.
+      4. Crea la tarea.
+
+      Con la misma clave y la misma huella del cuerpo normalizado, devuelve la tarea
+      original sin crear otra, aunque las dos peticiones lleguen a la vez. La clave solo
+      se guarda si la tarea se crea: un 404 o un 422 no la reserva.
+
+      Args:
+          data: Cuerpo ya validado y normalizado por Pydantic (`title` recortado, valores
+              por defecto aplicados).
+          idempotency_key: Valor de la cabecera `Idempotency-Key`, o `None` si no se
+              envió. Sin clave no hay deduplicación.
+
+      Returns:
+          Una tupla `(task, created)`. `created` es `True` si la tarea se ha creado (la
+          ruta responde 201), o `False` si es una repetición idempotente: misma clave y
+          misma huella, devuelve la tarea original con el mismo `id` y `created_at`, y la
+          ruta responde 200.
+
+      Raises:
+          HTTPException: 422 si `due_date` es anterior a hoy (UTC), aunque la petición
+              repita una clave ya guardada. 409 si la clave ya existe con otra huella.
+              404 si `assignee_id` no corresponde a ningún usuario.
+
+      Example:
+          Alta normal y repetición idempotente con la misma clave:
+
+          >>> data = TaskCreate(title="  Revisar backups  ")
+          >>> task, created = create_task(data, idempotency_key="alta-backup-001")
+          >>> task.title, task.status, created
+          ('Revisar backups', 'pending', True)
+          >>> same_body = TaskCreate(title="Revisar backups", priority=3)
+          >>> repeated, created = create_task(same_body, idempotency_key="alta-backup-001")
+          >>> repeated == task, created
+          (True, False)
+      """
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Acepté los docstrings tras revisar que describen lo que exige el spec y no el
+    comportamiento divergente. Ningún docstring menciona cómo se cuenta la longitud de la
+    clave ni presenta como correctos los mensajes propios de los 422.
+  - Para cada diferencia pedí aplicar esta regla:
+    - si el código incumple el spec, corregirlo con el cambio mínimo y un test que la
+      nombre;
+    - si el spec quedó desactualizado por una decisión ya registrada, actualizarlo.
+  - Se aplicó así:
+    - las diferencias 1 y 2 eran incumplimientos del código, así que se corrigió el código;
+    - `docs/feature-tasks.md` no se tocó, porque no se encontró ningún caso de spec
+      desactualizado.
+
+- **Iteraciones:**
+  - **Iteración 1 · resolver las diferencias código/especificación**
+
+    ```text
+    Para cada diferencia código/especificación que encontraste: si el código incumple la
+    especificación, corrige el código con el cambio mínimo y añade un test que lo nombre;
+    si la especificación quedó desactualizada por una decisión ya registrada, actualiza
+    docs/feature-tasks.md. Si no hubo diferencias, confírmalo. Ejecuta pytest -q.
+    ```
+
+    - **Respuesta:**
+      - **Diferencia 1 (decisión 10):** nuevo tipo `IdempotencyKey` en `tasks/schemas.py`.
+        Vuelve a leer la cabecera como UTF-8 antes de medir la longitud; si los bytes no son
+        UTF-8 válido, deja el valor tal cual. `tasks/routes.py` usa ese tipo en el `Header`.
+        Test: `test_regresion_decision_10_la_clave_se_cuenta_en_caracteres_no_en_bytes`.
+        64 "ñ" dan 201, y al repetir dan 200 con la misma tarea; 65 "ñ" dan 422.
+      - **Diferencia 2 (decisión 1):**
+        - En `title`, el validador solo aplica `str.strip()` (A4) y la longitud la comprueba
+          `Field(min_length, max_length)`, con los errores de Pydantic por defecto
+          (`string_too_short` / `string_too_long`).
+        - En `due_date`, la comprobación de `YYYY-MM-DD` lanza `PydanticKnownError("date_type")`
+          en lugar de un mensaje propio.
+        - Test: `test_regresion_decision_1_errores_de_forma_con_mensaje_de_pydantic_por_defecto`,
+          con 4 casos.
+      - **Diferencia 3:** con un uvicorn real, `"  abc  "` y `"abc"` se trataron como claves
+        distintas: la segunda petición, con otro cuerpo, dio 201 y no 409. Eso es coherente con
+        "sin `strip`", así que no hubo cambio.
+      - **Diferencia 4:**
+        - El contrato declara `status` como `str` y el repositorio siempre pone `"pending"`.
+        - Por HTTP no puede llegar un `datetime`, así que tampoco hay incumplimiento de la API.
+        - Sin cambios.
+    - **Ajuste resultante:**
+      - Con el código anterior, los 5 casos nuevos que aplican fallaban; con el arreglo
+        pasan.
+      - `pytest -q` queda en verde, con 122 tests (115 en `test_tasks.py` y 7 en
+        `test_users.py`).
+      - `ruff check .` da "All checks passed!". El doctest de `create_task` sigue pasando.
+      - Queda sin test la rama de la clave con bytes que no son UTF-8 válido.
+
+- **Validación:**
+  - `pytest -q` → 122 tests en verde, sin fallos. La cifra sale de contar los puntos:
+    72 + 50, y esta salida no imprime línea de resumen.
+    Log: [`logs/24-tests.txt`](logs/24-tests.txt)
+  - `ruff check .` → "All checks passed!". Log: [`logs/24-ruff.txt`](logs/24-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `docs(tasks): docstrings y documentación OpenAPI`
+
+## Paso P25 — Documentación OpenAPI
+
+- **Prompt usado:**
+
+  ```text
+  Mejora la documentación OpenAPI de tasks sin cambiar el comportamiento:
+  - summary y description en cada ruta de @tasks/routes.py, y `responses=` con
+    los códigos 200/201/404/409/422 y su significado.
+  - Field(description=..., examples=[...]) en @tasks/schemas.py y un ejemplo
+    completo de TaskCreate (model_config json_schema_extra).
+  - Documenta la cabecera Idempotency-Key.
+  Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - **Rutas:** `summary` y `description` en las tres rutas. `responses=` con los códigos que
+    aplican a cada una:
+    - `POST /tasks`: 200 (repetición idempotente, modelo `Task`), 201, 404, 409 y 422;
+    - `GET /tasks`: 200 y 422;
+    - `GET /tasks/{task_id}`: 200, 404 y 422.
+  - **Descripción de `POST /tasks`:** recoge el orden de evaluación del spec y la
+    idempotencia. El 422 lleva dos ejemplos: error de forma (`detail` en lista) y fecha
+    pasada (`detail` de texto).
+  - **Parámetros:** `assignee_id` usa `Query(...)` y `task_id` usa `Path(...)`, ambos con
+    `description` y `examples`.
+  - **Cabecera `Idempotency-Key`:** `description` y ejemplo `alta-backup-001`. Es opcional,
+    admite de 1 a 64 caracteres (no bytes), no se recorta, distingue mayúsculas, es global y
+    no caduca.
+  - **Schemas:** `Field(description=..., examples=[...])` en todos los campos de `TaskCreate`
+    y `Task`, y un ejemplo completo de `TaskCreate` en `model_config` con
+    `json_schema_extra`. El ejemplo lleva el título con espacios para mostrar el recorte.
+  - **Modelo nuevo:** `ErrorMessage` (`{"detail": str}`), solo para documentar los 404 y 409.
+  - Al revisar `app.openapi()` corrigió dos huecos:
+    - la `description` de `assignee_id` se perdía dentro del `| None`, así que la movió al
+      `Field` exterior;
+    - al declarar 422 a mano, FastAPI deja de añadir su esquema, así que se referenció
+      `HTTPValidationError` (y, en el POST, también `ErrorMessage`).
+
+  ```python
+  def create_task(
+      data: TaskCreate,
+      response: Response,
+      idempotency_key: IdempotencyKey | None = Header(
+          default=None,
+          alias="Idempotency-Key",
+          description=(
+              "Opcional. Hace la creación idempotente. De 1 a 64 caracteres (no bytes), "
+              "sin recortar y distinguiendo mayúsculas. La clave es global y no caduca. "
+              "Vacía o de más de 64 caracteres da 422."
+          ),
+          examples=["alta-backup-001"],
+      ),
+  ) -> Task:
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Acepté tras revisar varias cosas:
+    - el esquema que genera `app.openapi()`: las tres rutas tienen `summary`, y los códigos
+      son 200/201/404/409/422 en `POST /tasks`, 200/422 en `GET /tasks` y 200/404/422 en
+      `GET /tasks/{task_id}`;
+    - todos los campos de `TaskCreate` y `Task` tienen `description`, y ninguna referencia
+      `$ref` de `paths` queda sin componente;
+    - la captura de Swagger con `POST /tasks` desplegada;
+    - los tests siguen igual: la documentación no cambia el comportamiento.
+  - Queda como riesgo aceptado la referencia manual a `HTTPValidationError`. Ese componente
+    existe porque lo generan otras rutas con parámetros.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 122 tests en verde, sin fallos. La cifra sale de contar los puntos:
+    72 + 50, y esta salida no imprime línea de resumen.
+    Log: [`logs/25-tests.txt`](logs/25-tests.txt)
+  - `ruff check .` → "All checks passed!". Log: [`logs/25-ruff.txt`](logs/25-ruff.txt)
+- **Captura:** [`capturas/P25-openapi.png`](capturas/P25-openapi.png) — Swagger en `/docs` con
+  `POST /tasks` desplegada (selector `#operations-tasks-create_task_tasks_post .opblock-summary`).
+- **Commit:** `docs(tasks): docstrings y documentación OpenAPI`
