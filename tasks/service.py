@@ -6,6 +6,7 @@ Las rutas no acceden al repositorio directamente: pasan por aquí. Esta capa es 
 """
 import hashlib
 import json
+import threading
 from datetime import date
 
 from core import clock, errors
@@ -16,6 +17,8 @@ from users import service as users_service
 PAST_DUE_DATE_MESSAGE = "la fecha límite no puede ser anterior a hoy (UTC)"
 # Campos que cuentan para la huella del cuerpo (A5).
 FINGERPRINT_FIELDS = {"title", "description", "priority", "due_date", "assignee_id"}
+# Serializa la sección de idempotencia y creación de `create_task` (también `_next_id`).
+_create_lock = threading.Lock()
 
 
 def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bool]:
@@ -36,12 +39,15 @@ def create_task(data: TaskCreate, idempotency_key: str | None) -> tuple[Task, bo
     _ensure_due_date_not_past(data.due_date)
 
     fingerprint = _fingerprint(data)
-    replayed_task = _find_replayed_task(idempotency_key, fingerprint)
-    if replayed_task is not None:
-        return replayed_task, False
+    # Las rutas síncronas corren en un threadpool: buscar la clave, crear y guardarla
+    # debe ser atómico para que dos peticiones simultáneas no creen dos tareas.
+    with _create_lock:
+        replayed_task = _find_replayed_task(idempotency_key, fingerprint)
+        if replayed_task is not None:
+            return replayed_task, False
 
-    _ensure_assignee_exists(data.assignee_id)
-    return _save_task(data, idempotency_key, fingerprint), True
+        _ensure_assignee_exists(data.assignee_id)
+        return _save_task(data, idempotency_key, fingerprint), True
 
 
 def _ensure_due_date_not_past(due_date: date | None) -> None:

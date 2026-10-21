@@ -2194,3 +2194,234 @@
   - `ruff check .` → `All checks passed!`. Log: [`logs/21-3-ruff.txt`](logs/21-3-ruff.txt)
 - **Captura:** N/A
 - **Commit:** `refactor(tasks): 409 de idempotencia con errors.already_exists del catálogo`
+
+## Paso P21.4 — Medición después del refactor
+
+- **Prompt usado:**
+
+  ```text
+  fin. Ejecuta la cobertura con ramas y la mutación (mutmut run y mutmut results, o la
+  mutación manual si mutmut no corre) y compárala con la de antes del refactor.
+  ```
+
+- **Qué propuso la IA:**
+  - Ejecutó la cobertura con ramas, `mutmut run` y `mutmut results`, y las comparó con la
+    línea base de P20 (cobertura) y de P15/P16 (mutación).
+  - Cobertura: `tasks/` sigue al 100 % de líneas y de ramas.
+    - La única bajada es `core/errors.py:28`, el cuerpo de `errors.conflict`: quedó sin uso
+      tras el refactor 3 y no se borró por la regla de no eliminar abstracciones.
+  - Mutación: hay 19 mutantes nuevos (constantes y funciones extraídas) y los tests matan
+    todos. Siguen vivos los mismos 9 equivalentes de `_fingerprint`, una función que no se
+    tocó.
+  - **Incidencia de mutmut:** la primera ejecución dio `116/116 · 71 muertos · 36 "no tests"
+    · 9 vivos`.
+    - Los 36 "no tests" eran exactamente los mutantes de las 4 funciones nuevas
+      (`_ensure_due_date_not_past`, `_find_replayed_task`, `_ensure_assignee_exists` y
+      `_save_task`).
+    - Causa: la caché `mutants/mutmut-stats.json` conservaba el mapa de tests por función de
+      antes del refactor y no conocía esas funciones.
+    - Solución: se apartó la caché (`mutants/` está en `.gitignore`) y se repitió `mutmut run`
+      desde cero.
+
+  | Cobertura | Antes (P20) | Después |
+  |---|---|---|
+  | Tests | 114 passed | 114 passed |
+  | `tasks/` | 100 % líneas · 100 % ramas (0 parciales) | igual |
+  | `tasks/service.py` | 38 sentencias · 16 ramas · 100 % | 51 sentencias · 18 ramas · 100 % |
+  | `tasks/schemas.py` | 33 sentencias · 6 ramas · 100 % | 40 sentencias · 6 ramas · 100 % |
+  | `core/errors.py` | 100 % | 89 % (falta la línea 28, `errors.conflict`) |
+  | Total del proyecto | 193 sentencias, 1 sin cubrir · 28 ramas · 99,55 % | 213 sentencias, 2 sin cubrir · 30 ramas · 99,18 % |
+
+  | Mutación | Total | Muertos | Vivos | Sin tests | Bruta | Sin equivalentes |
+  |---|---|---|---|---|---|---|
+  | Antes (P15/P16) | 97 | 88 | 9 | 0 | 90,7 % | 100 % |
+  | Después | 116 | 107 | 9 | 0 | 92,2 % | 100 % |
+
+- **Qué acepté / rechacé y por qué:**
+  - Aceptado tras revisar que la cobertura de `tasks/` sigue al 100 % (por encima del
+    90 % exigido) y que no aparecen supervivientes nuevos.
+  - Aceptado también que la línea 28 de `core/errors.py` quede sin cubrir, por la regla de
+    no borrar abstracciones. Qué hacer con ella queda [PENDIENTE] de decisión.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 114 passed; cobertura total
+    99,18 %. `tasks/` al 100 %; `core/errors.py` al 89 % (falta la línea 28).
+    Log: [`logs/21-despues-refactor-cobertura.txt`](logs/21-despues-refactor-cobertura.txt)
+  - `mutmut run` (sin log guardado) → `116/116 · 107 muertos · 0 sin tests · 0 timeout ·
+    0 sospechosos · 9 supervivientes`, tras regenerar la caché.
+  - `mutmut results` → los mismos 9 supervivientes de `_fingerprint` (3, 5, 10, 11, 13, 14,
+    15, 16 y 20). Log: [`logs/21-despues-refactor-mutmut.txt`](logs/21-despues-refactor-mutmut.txt)
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P22 — Resultados de la refactorización
+
+- **Prompt usado:**
+
+  ```text
+  Compara el código de tasks/ antes y después del refactor: usa git diff entre el último
+  commit anterior al primer refactor(tasks) y HEAD, limitado a tasks/. Resume en una
+  tabla: cambio realizado | smell que resuelve | impacto en claridad/mantenibilidad |
+  tests que lo protegieron. Incluye métricas simples (líneas por función, número de ramas
+  en create_task, constantes con nombre) y la cobertura y mutación antes/después.
+  ```
+
+- **Qué propuso la IA:**
+  - Comparó `da93011` (el último commit antes del primer `refactor(tasks)`, `86692b1`) con
+    `HEAD` (`15500cd`), limitado a `tasks/`: 3 archivos, con 59 líneas añadidas y 20 borradas.
+    Ningún test se modificó.
+  - Sacó las métricas con un script `ast` sobre `git show <rev>:<archivo>`.
+  - Hay un dato que podría leerse como empeoramiento: las decisiones totales del flujo de
+    creación suben de 7 a 8, por el `if replayed_task is not None` nuevo. A cambio, cada
+    función es más simple.
+
+  | Cambio realizado | Smell que resuelve | Impacto en claridad y mantenibilidad | Tests que lo protegieron |
+  |---|---|---|---|
+  | **R1** `86692b1`: 7 constantes con nombre en `tasks/schemas.py`, usadas en `TaskBase` y en el `Header` de `tasks/routes.py` | Números mágicos (1000, 1, 5, 3, 1, 1, 64) | Los límites del spec tienen nombre y una sola definición, coherente con `TITLE_*`; cambiar uno es tocar una línea | CA-11, CA-12/13/14, CA-22/23 y CA-32 (límites); `test_crear_tarea_valida_queda_pendiente_con_los_valores_recibidos` (valor por defecto) |
+  | **R2** `45fb7ef`: `create_task` dividida en `_ensure_due_date_not_past`, `_find_replayed_task`, `_ensure_assignee_exists` y `_save_task` | Función larga con 5 responsabilidades | `create_task` se lee en el orden de evaluación del spec; cada regla tiene nombre y se puede cambiar por separado | CA-16/19/25 (fecha), CA-21/24 (responsable), CA-26 a CA-31 (idempotencia, incluido CA-29); los 14 tests de `create_task` en `test_tasks_service.py`; `test_flujo_alta_de_usuario_y_tareas_con_idempotencia_y_filtro` |
+  | **R3** `15500cd`: 409 con `errors.already_exists("clave de idempotencia", key)` | Mensaje duplicado fuera del catálogo | El texto del 409 vive solo en `core/errors.py`; cumple la decisión 11 al pie de la letra | `test_misma_clave_y_otro_cuerpo_da_409` y `test_misma_clave_cambiando_un_solo_campo_da_409` (comparan el `detail` exacto); CA-28 y CA-43 |
+
+  | Métrica | Antes (`da93011`) | Después (`HEAD`) |
+  |---|---|---|
+  | `create_task`: líneas totales / cuerpo sin docstring | 44 / 29 | 24 / 9 |
+  | `create_task`: puntos de decisión (`if` + `and`) | 7 | 1 |
+  | `create_task`: complejidad ciclomática | 8 | 2 |
+  | Funciones extraídas: líneas de cuerpo · decisiones | — | `_ensure_due_date_not_past` 2 · 2, `_find_replayed_task` 9 · 3, `_ensure_assignee_exists` 3 · 1, `_save_task` 11 · 1 |
+  | Decisiones totales del flujo de creación | 7 | 8 |
+  | Función más larga de `service.py` (cuerpo) | 29 (`create_task`) | 11 (`_save_task`) |
+  | Constantes con nombre en `tasks/schemas.py` | 3 | 10 |
+  | Literales numéricos en `Field`/`Header` | 7 (5 en schemas y 2 en routes) | 0 |
+
+  | Cobertura y mutación | Antes | Después |
+  |---|---|---|
+  | Tests | 114 passed | 114 passed (ninguno modificado) |
+  | `tasks/`, líneas y ramas | 100 % · 100 % (0 parciales) | 100 % · 100 % (0 parciales) |
+  | `tasks/service.py` | 38 sentencias · 16 ramas | 51 sentencias · 18 ramas |
+  | Total del proyecto | 99,55 % | 99,18 % (`core/errors.py:28` sin cubrir: `errors.conflict` sin uso) |
+  | Mutantes (total / muertos / vivos) | 97 / 88 / 9 | 116 / 107 / 9 |
+  | Puntuación de mutación (bruta / sin equivalentes) | 90,7 % / 100 % | 92,2 % / 100 % |
+
+- **Qué acepté / rechacé y por qué:**
+  - Aceptado tras revisar que las cifras de cobertura y mutación coinciden con los logs de
+    P20 y P21.4, y que el diff no toca tests.
+  - Qué hacer con `errors.conflict`, ahora sin uso, sigue [PENDIENTE] de decisión.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `git diff da93011 HEAD -- tasks/` → 3 archivos (`routes.py` +10/−2, `schemas.py` +12/−3,
+    `service.py` +37/−15). Log: [`logs/22-diff-refactor.txt`](logs/22-diff-refactor.txt)
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P23 — Code review por categorías
+
+- **Prompt usado:**
+
+  ```text
+  Revisa el diff de la rama contra main (git diff main...HEAD, excluyendo docs/evidencia/)
+  contra @CLAUDE.md y @docs/feature-tasks.md. Reporta hallazgos en una tabla numerada,
+  agrupados en: seguridad, corrección, manejo de errores, convenciones del proyecto,
+  tests y documentación. Para cada uno: archivo:línea, qué está mal, severidad propuesta
+  (bloqueante / menor / nota) y el arreglo sugerido. Señala también lo que NO puedes
+  juzgar (negocio, arquitectura). No cambies código.
+  ```
+
+- **Qué propuso la IA:**
+  - Revisó el diff `main...HEAD` (20 archivos, sin `docs/evidencia/`). Antes, `pytest` estaba
+    en verde y `ruff check .` limpio. `migrations/` y `legacy/` no tenían cambios.
+  - Reportó 17 hallazgos en las seis categorías. Los más relevantes:
+    - una condición de carrera en la idempotencia (#1);
+    - `errors.conflict()` añadida y sin uso, contra el alcance del spec (#4);
+    - los tres archivos de tests de más (#10).
+  - Separó lo que no puede juzgar:
+    - **negocio:** claves globales sin caducidad, 200 frente a 201 en la repetición, si la
+      idempotencia debe aguantar peticiones simultáneas;
+    - **arquitectura:** dónde se asigna `created_at`, herencia de `Task`, dependencias de
+      desarrollo, rutas síncronas o asíncronas.
+  - Con la regla de clasificación de la iteración, la tabla final queda así:
+
+  | # | Archivo:línea | Hallazgo | Clasificación final |
+  |---|---|---|---|
+  | 1 | `tasks/service.py:40-45` | Dos POST simultáneos con la misma `Idempotency-Key` crean dos tareas | **Bloqueante** (decisión 11) · corregido |
+  | 2 | `tasks/repository.py:13,16` | Claves y tareas en memoria, sin límite ni caducidad | Falso positivo: intencional porque decisión 10 y "No incluye: caducidad / autenticación" |
+  | 3 | `tasks/service.py` (409) | El `detail` repite la clave del cliente | Falso positivo: intencional porque el contrato fija `"clave de idempotencia ya existe: <clave>"` |
+  | 4 | `core/errors.py:26-31` | `conflict()` nueva y sin uso | **Bloqueante** ("No incluye: nuevas funciones en `core/errors.py`", decisión 11) |
+  | 5 | `CHANGELOG.md:14` | Anuncia `conflict()` | Menor |
+  | 6 | `tasks/schemas.py:49` | Un `datetime` pasado desde Python se cuela como fecha | Menor (por HTTP no ocurre) |
+  | 7 | `tasks/schemas.py:67-68` | `status: str` con `TODO` | Menor |
+  | 8 | `tasks/schemas.py:63` | `Task` hereda los validadores de entrada | Menor |
+  | 9 | `tasks/service.py:66-70` | 404 del responsable vía `users_service.get_user` | Falso positivo: intencional porque CLAUDE.md (consulta vía `service.py`) y decisión 5 |
+  | 10 | `CLAUDE.md:20` | Tests de `tasks` en 3 archivos de más | **Bloqueante** (convención "un archivo por recurso") |
+  | 11 | `users/repository.py:28` | `datetime.now()` directo (código previo) | **Bloqueante** (convención de `core/clock.py`) |
+  | 12 | `tests/test_tasks.py:20-22` | `created_at` no se fija en los tests | Menor |
+  | 13 | — | Sin test de peticiones simultáneas | **Bloqueante** (va con #1) · corregido |
+  | 14 | `pyproject.toml:36` | `fail_under = 90` para todo el proyecto | Menor |
+  | 15 | `requirements.txt:9` | `mutmut` en las dependencias de la app | Menor |
+  | 16 | `main.py:11` | La app se sigue llamando "API de usuarios" | Menor |
+  | 17 | `CHANGELOG.md:15` | Entrada incompleta | Menor |
+
+  - Arreglo del bloqueante #1 en `tasks/service.py`:
+
+  ```python
+  _create_lock = threading.Lock()
+  ...
+      fingerprint = _fingerprint(data)
+      # Las rutas síncronas corren en un threadpool: buscar la clave, crear y guardarla
+      # debe ser atómico para que dos peticiones simultáneas no creen dos tareas.
+      with _create_lock:
+          replayed_task = _find_replayed_task(idempotency_key, fingerprint)
+          if replayed_task is not None:
+              return replayed_task, False
+
+          _ensure_assignee_exists(data.assignee_id)
+          return _save_task(data, idempotency_key, fingerprint), True
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Acepté la revisión y pedí reclasificarla con una regla explícita: bloqueante, menor o
+    falso positivo. El motivo era separar lo que incumple el spec o CLAUDE.md de lo que es
+    intencional.
+  - Mi regla ponía como ejemplo de falso positivo "409 con conflict()". La IA lo mantuvo
+    como bloqueante (#4): el código 409 sí es intencional, pero la decisión 11 exige
+    `errors.already_exists(...)` y prohíbe funciones nuevas en `core/errors.py`. Es una
+    decisión propuesta por la IA y aceptada.
+  - Acepté corregir solo el primer bloqueante (#1, junto con su test #13) y parar. #4, #10 y
+    #11 quedan pendientes.
+
+- **Iteraciones:**
+  - **Iteración 1 · arreglo del bloqueante #1**
+
+    ```text
+    Clasifica cada hallazgo con esta regla y dame la tabla final:
+    - Bloqueante: incumple un CA-XX, una decisión de @docs/feature-tasks.md, una convención
+      de @CLAUDE.md o introduce un riesgo de seguridad.
+    - Menor: claridad o estilo sin impacto en el comportamiento.
+    - Falso positivo: lo que es intencional por una decisión documentada (p. ej. 409 con
+      conflict(), status 200 en la repetición idempotente, almacén en memoria sin caducidad
+      de claves); responde cada uno con "intencional porque <decisión>".
+    Después corrige SOLO el primer bloqueante, ejecuta pytest -q y ruff check . y para.
+    Si no hay bloqueantes, dímelo y no cambies nada.
+    ```
+
+    - **Respuesta:**
+      - Entregó la tabla final de arriba: 5 bloqueantes, 9 menores y 3 falsos positivos.
+      - Respondió "status 200 en la repetición" como intencional por la decisión 11 y CA-26.
+      - Corrigió el #1: un `threading.Lock` en `tasks/service.py` cubre buscar la clave,
+        comprobar el responsable, crear la tarea y guardar la clave. La fecha y la huella
+        siguen fuera del lock, así que el orden de evaluación no cambia.
+      - Añadió `test_dos_peticiones_simultaneas_con_la_misma_clave_crean_una_sola_tarea` en
+        `tests/test_tasks_service.py`. Usa dos hilos y una consulta lenta del responsable.
+    - **Ajuste resultante:**
+      - Antes del arreglo, el test nuevo fallaba porque se creaban dos tareas.
+      - Después del arreglo, `pytest -q` queda en verde, con 115 tests y ningún fallo.
+      - `ruff check .` da "All checks passed!".
+
+- **Validación:**
+  - `pytest -q` → 115 tests en verde, sin fallos. La cifra sale de contar los puntos:
+    72 + 43, y esta salida no imprime línea de resumen.
+    Log: [`logs/23-tests-arreglo1.txt`](logs/23-tests-arreglo1.txt)
+- **Captura:** N/A
+- **Commit:** `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`

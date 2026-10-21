@@ -8,6 +8,8 @@ Reglas de `docs/feature-tasks.md`. Qué se aísla y qué no:
     el repositorio en memoria es real y lo limpia la fixture autouse de `conftest.py`
   - cada test indica, cuando no es obvio, qué mutación del service detecta
 """
+import threading
+import time
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -16,7 +18,7 @@ from fastapi import HTTPException
 from core import errors
 from tasks import repository as tasks_repository
 from tasks import service
-from tasks.schemas import TaskCreate
+from tasks.schemas import Task, TaskCreate
 from users.schemas import User
 
 TODAY = date(2026, 10, 20)
@@ -247,6 +249,36 @@ def test_misma_clave_cambiando_un_solo_campo_da_409(changed_field: dict) -> None
     assert error.value.status_code == 409
     assert error.value.detail == f"clave de idempotencia ya existe: {KEY}"
     assert tasks_repository.list_all() == [original]
+
+
+def test_dos_peticiones_simultaneas_con_la_misma_clave_crean_una_sola_tarea(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Decisión 11: misma clave y misma huella no crea otra tarea, tampoco en paralelo.
+    # La consulta lenta del responsable abre la ventana entre buscar y guardar la clave.
+    # Arrange
+    def slow_get_user(user_id: int) -> None:
+        time.sleep(0.05)
+
+    monkeypatch.setattr("users.service.get_user", slow_get_user)
+    data = TaskCreate(title="Revisar backups", assignee_id=1)
+    results: list[tuple[Task, bool]] = []
+
+    def create() -> None:
+        results.append(service.create_task(data, idempotency_key=KEY))
+
+    threads = [threading.Thread(target=create) for _ in range(2)]
+
+    # Act
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    # Assert
+    assert sorted(created for _, created in results) == [False, True]
+    assert results[0][0] == results[1][0]
+    assert len(tasks_repository.list_all()) == 1
 
 
 def test_un_404_previo_no_reserva_la_clave() -> None:
