@@ -1,0 +1,23 @@
+52404ac docs: README, CHANGELOG 0.2.0 y ADR de idempotencia
+808cb8c docs(tasks): docstrings y documentación OpenAPI
+f8b8313 fix(tasks): created_at de users desde core/clock.py en lugar de datetime.now()
+53e7990 fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md
+5d2cf28 fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec
+90a09e7 fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave
+15500cd refactor(tasks): 409 de idempotencia con errors.already_exists del catálogo
+45fb7ef refactor(tasks): extraer reglas de dominio, idempotencia y persistencia de create_task
+86692b1 refactor(tasks): constantes con nombre para los límites de validación
+da93011 test(tasks): due_date con hora 00:00:00 aceptada como fecha + test de regresión
+480b421 test(tasks): cobertura de ramas >90%
+f303bbf test(tasks): flujo de integración users + tasks
+dc08bb5 test(tasks): unitarios del service con reloj y usuarios mockeados
+5db006b chore: configuración de cobertura de ramas y mutmut
+4a55657 chore(tasks): integración y linting
+a5bcc57 feat(tasks): idempotencia con Idempotency-Key
+340f75d feat(tasks): reglas de fecha límite y responsable
+dcb028c feat(tasks): validación de título, prioridad y descripción
+60423e1 feat(tasks): alta y consulta de tareas (happy path)
+e05e7be test(tasks): tests de aceptación (rojo)
+619a298 feat(tasks): esqueleto del recurso
+42f2fbc docs(claude): convenciones para el recurso tasks
+6e9e2a2 docs: especificación y criterios de aceptación de tasks

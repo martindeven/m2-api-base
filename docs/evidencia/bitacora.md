@@ -47,7 +47,7 @@
   - `ruff check .` → All checks passed!
     Log: [`logs/00-linea-base-ruff.txt`](logs/00-linea-base-ruff.txt)
 - **Captura:** [P00-linea-base.png](capturas/P00-linea-base.png)
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `6e9e2a2`
 
 ## Paso P1 — Exploración del repo
 
@@ -112,7 +112,7 @@
   → Ajuste: el resumen queda completo con las cinco convenciones; sin cambios de código.
 - **Validación:** ninguna (paso de solo lectura, sin comandos).
 - **Captura:** N/A
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `6e9e2a2`
 
 ## Paso P2 — Especificación y criterios de aceptación
 
@@ -319,7 +319,7 @@
   criterios pasan de 23 a 43 (CA-01…CA-43), con el reloj fijado en `2026-10-20` para los de fecha.
 - **Validación:** ninguna (paso de especificación, sin comandos).
 - **Captura:** N/A
-- **Commit:** `docs: especificación y criterios de aceptación de tasks`
+- **Commit:** `6e9e2a2` `docs: especificación y criterios de aceptación de tasks`
 
 ## Paso P3 — Convenciones en CLAUDE.md
 
@@ -472,7 +472,7 @@
   es solo de documentación y no altera la suite.
   Log: [`logs/03-tests.txt`](logs/03-tests.txt)
 - **Captura:** N/A
-- **Commit:** `docs(claude): convenciones para el recurso tasks`
+- **Commit:** `42f2fbc` `docs(claude): convenciones para el recurso tasks`
 
 ## Paso P4 — Skeleton-first: esqueleto de tasks
 
@@ -560,7 +560,7 @@
   - `pytest -q` → 6 tests sin fallos (`......  [100%]`), todos de `users`; `tasks` aún no
     está montado. Log: [`logs/04-tests.txt`](logs/04-tests.txt)
 - **Captura:** N/A
-- **Commit:** `feat(tasks): esqueleto del recurso`
+- **Commit:** `619a298` `feat(tasks): esqueleto del recurso`
 
 ## Paso P5 — Test-first: tests de aceptación en rojo
 
@@ -706,7 +706,7 @@
     Log: [`logs/05-tests-rojos.txt`](logs/05-tests-rojos.txt)
   - `ruff check .` → `All checks passed!` (ejecutado en el paso; sin log propio).
 - **Captura:** ![Tests de aceptación en rojo](capturas/P05-tests-rojos.png)
-- **Commit:** `test(tasks): tests de aceptación (rojo)`
+- **Commit:** `e05e7be` `test(tasks): tests de aceptación (rojo)`
 
 ## Paso P6 — Incremental 1: happy path
 
@@ -794,7 +794,7 @@
     Log: [`logs/06-tests.txt`](logs/06-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/06-ruff.txt`](logs/06-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `feat(tasks): alta y consulta de tareas (happy path)`
+- **Commit:** `60423e1` `feat(tasks): alta y consulta de tareas (happy path)`
 
 ## Paso P7 — Incremental 2: validaciones de forma
 
@@ -881,7 +881,7 @@
     Log: [`logs/07-tests.txt`](logs/07-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/07-ruff.txt`](logs/07-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `feat(tasks): validación de título, prioridad y descripción`
+- **Commit:** `dcb028c` `feat(tasks): validación de título, prioridad y descripción`
 
 ## Paso P8 — Incremental 3: fecha límite y responsable
 
@@ -958,7 +958,7 @@
     Log: [`logs/08-tests.txt`](logs/08-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/08-ruff.txt`](logs/08-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `feat(tasks): reglas de fecha límite y responsable`
+- **Commit:** `340f75d` `feat(tasks): reglas de fecha límite y responsable`
 
 ## Paso P9 — Incremental 4: idempotencia
 
@@ -1025,8 +1025,9 @@
     `invalid_request`.
   - La IA advirtió que `conflict()` contradice la decisión 11 y la sección "No incluye" de
     `docs/feature-tasks.md`. Mantuvo el texto del contrato
-    (`"clave de idempotencia ya existe: <clave>"`). Actualizar la especificación queda
-    [PENDIENTE].
+    (`"clave de idempotencia ya existe: <clave>"`). Resuelto en P21.3 y P23 (`15500cd` y
+    `5d2cf28`): el 409 usa `errors.already_exists` y `conflict()` se eliminó, como pide la
+    decisión 11, sin cambiar la especificación.
 
 - **Iteraciones:**
 
@@ -1063,7 +1064,7 @@
     Log: [`logs/09-tests.txt`](logs/09-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/09-ruff.txt`](logs/09-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `feat(tasks): idempotencia con Idempotency-Key`
+- **Commit:** `a5bcc57` `feat(tasks): idempotencia con Idempotency-Key`
 
 ## Paso P10 — Integración y estilo
 
@@ -1126,7 +1127,8 @@
   - Crear `CHANGELOG.md` y ampliar `README.md` se aceptó para cumplir la "Definición de
     hecho" de `CLAUDE.md`.
   - El TODO de `status` y la contradicción de `docs/feature-tasks.md` con `conflict()` quedan
-    sin cambiar: [PENDIENTE].
+    sin cambiar. La contradicción se resolvió en `15500cd` y `5d2cf28`. El TODO sigue en
+    `tasks/schemas.py:163` (menor #7 de P23, sin corregir): [PENDIENTE] de decisión.
 
 - **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
 
@@ -1142,7 +1144,7 @@
 - **Captura:**
   - ![Swagger con los endpoints de tasks](capturas/P10-swagger.png)
   - ![Respuestas 201 y 200 de los curl](capturas/P10-curl.png)
-- **Commit:** `chore(tasks): integración y linting`
+- **Commit:** `4a55657` `chore(tasks): integración y linting`
 
 ## Paso P11 — Configuración de cobertura y mutación
 
@@ -1194,8 +1196,9 @@
     porque el prompt pedía usar la sintaxis de la versión instalada (3.8.0).
   - Las líneas sin cubrir (`core/clock.py:16`, cuerpo de `today()`, mockeado en los tests;
     `main.py:18`, `/health` sin test) quedan anotadas como línea base, sin cambios en este
-    paso: los mutantes de `today()` sobrevivirán en `mutmut run`. [PENDIENTE] decidir si se
-    cubren.
+    paso: los mutantes de `today()` sobrevivirán en `mutmut run`. Resuelto en P14
+    (`480b421`): dos tests cubren `core/clock.py:16` y en P15 ningún mutante de
+    `core/clock.py` sobrevivió. `main.py:18` sigue fuera del alcance.
 
 - **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
 
@@ -1208,7 +1211,7 @@
     Log: [`logs/11-mutmut-version.txt`](logs/11-mutmut-version.txt)
   - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
 - **Captura:** N/A
-- **Commit:** `chore: configuración de cobertura de ramas y mutmut`
+- **Commit:** `5db006b` `chore: configuración de cobertura de ramas y mutmut`
 
 ## Paso P12 — Tests unitarios del service
 
@@ -1316,7 +1319,7 @@
   - `pytest tests/test_tasks_service.py --cov=tasks --cov-branch` (ejecutado en el paso,
     sin log guardado) → `tasks/service.py` al 100 % solo con los unitarios.
 - **Captura:** N/A
-- **Commit:** `test(tasks): unitarios del service con reloj y usuarios mockeados`
+- **Commit:** `dc08bb5` `test(tasks): unitarios del service con reloj y usuarios mockeados`
 
 ## Paso P13 — Test de integración users + tasks
 
@@ -1397,7 +1400,7 @@
   - Orden inverso de los 2 tests nuevos (ejecutado en el paso, sin log guardado) → 2 passed.
   - `ruff check .` → `All checks passed!` (ejecutado en el paso, sin log guardado).
 - **Captura:** N/A
-- **Commit:** `test(tasks): flujo de integración users + tasks`
+- **Commit:** `f303bbf` `test(tasks): flujo de integración users + tasks`
 
 ## Paso P14 — Cerrar huecos de cobertura
 
@@ -1481,7 +1484,7 @@
 - **Captura:**
   - ![Informe HTML de cobertura](capturas/P14-cobertura.png)
   - ![Cobertura en terminal](capturas/P14-cobertura-terminal.png)
-- **Commit:** `test(tasks): cobertura de ramas >90%`
+- **Commit:** `480b421` `test(tasks): cobertura de ramas >90%`
 
 ## Paso P15 — Mutation testing
 
@@ -1564,7 +1567,7 @@
     Log: [`logs/15-mutmut-show.txt`](logs/15-mutmut-show.txt)
   - `git status --short` → limpio salvo la evidencia: no hubo cambios de código.
 - **Captura:** ![Resultados de mutmut](capturas/P15-mutmut-antes.png)
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P16 — Matar mutantes supervivientes
 
@@ -1624,7 +1627,7 @@
   - `pytest --cov --cov-branch --cov-report=term-missing` → 113 passed, cobertura 99,55 %;
     `tasks/` y `core/clock.py` al 100 %. Log: [`logs/16-cobertura.txt`](logs/16-cobertura.txt)
 - **Captura:** ![Resultados de mutmut después](capturas/P16-mutmut-despues.png)
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P17a — Preparación del caso de debugging
 
@@ -1690,7 +1693,7 @@
     P15–P16 de la bitácora, aún sin commitear.
     Log: [`logs/17a-diff-bug.txt`](logs/17a-diff-bug.txt)
 - **Captura:** N/A
-- **Commit:** `pendiente` (el bug recreado no se commitea)
+- **Commit:** sin commit propio (el bug recreado no se commitea); la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P17 — Reproducir y presentar el bug
 
@@ -1759,7 +1762,7 @@
     La salida guardada no incluye la línea de recuento `N failed, M passed`.
     Log: [`logs/17-bug-trace.txt`](logs/17-bug-trace.txt)
 - **Captura:** ![Trace del bug de CA-17](capturas/P17-bug-trace.png)
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P18 — Confirmación de la hipótesis
 
@@ -1811,7 +1814,7 @@
 - **Validación:** ninguna en este paso. Las comprobaciones de la confirmación se
   ejecutaron, pero no se guardó log.
 - **Captura:** N/A
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P19a — Test de regresión en rojo
 
@@ -1860,7 +1863,7 @@
     Log: [`logs/19-regresion-rojo.txt`](logs/19-regresion-rojo.txt)
   - `ruff check tests/test_tasks.py` (sin log guardado) → `All checks passed!`
 - **Captura:** ![Test de regresión en rojo](capturas/P19-regresion-rojo.png)
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `da93011`
 
 ## Paso P19 — Fix mínimo + test de regresión
 
@@ -1937,7 +1940,7 @@
     Log: [`logs/19-fix-verde.txt`](logs/19-fix-verde.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/19-ruff.txt`](logs/19-ruff.txt)
 - **Captura:** ![Suite en verde tras el fix](capturas/P19-fix-verde.png)
-- **Commit:** `test(tasks): due_date con hora 00:00:00 aceptada como fecha + test de regresión`
+- **Commit:** `da93011` `test(tasks): due_date con hora 00:00:00 aceptada como fecha + test de regresión`
 
 ## Paso P20 — Inventario de code smells
 
@@ -2029,7 +2032,7 @@
     99,55 % (193 stmts, 1 miss; 28 ramas, 0 parciales). `tasks/` y `core/` al 100 %.
     Log: [`logs/20-antes-refactor-cobertura.txt`](logs/20-antes-refactor-cobertura.txt)
 - **Captura:** N/A
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `86692b1`
 
 ## Paso P21.1 — Refactor 1
 
@@ -2090,7 +2093,7 @@
     la línea de recuento. Log: [`logs/21-1-tests.txt`](logs/21-1-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/21-1-ruff.txt`](logs/21-1-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `refactor(tasks): constantes con nombre para los límites de validación`
+- **Commit:** `86692b1` `refactor(tasks): constantes con nombre para los límites de validación`
 
 ## Paso P21.2 — Refactor 2
 
@@ -2147,7 +2150,7 @@
   - `pytest -q --cov=tasks --cov-branch --cov-report=term-missing` (sin log guardado) →
     `tasks/service.py` al 100 % (51 sentencias, 18 ramas, 0 parciales).
 - **Captura:** N/A
-- **Commit:** `refactor(tasks): extraer reglas de dominio, idempotencia y persistencia de create_task`
+- **Commit:** `45fb7ef` `refactor(tasks): extraer reglas de dominio, idempotencia y persistencia de create_task`
 
 ## Paso P21.3 — Refactor 3
 
@@ -2193,7 +2196,7 @@
     Log: [`logs/21-3-tests.txt`](logs/21-3-tests.txt)
   - `ruff check .` → `All checks passed!`. Log: [`logs/21-3-ruff.txt`](logs/21-3-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `refactor(tasks): 409 de idempotencia con errors.already_exists del catálogo`
+- **Commit:** `15500cd` `refactor(tasks): 409 de idempotencia con errors.already_exists del catálogo`
 
 ## Paso P21.4 — Medición después del refactor
 
@@ -2241,7 +2244,8 @@
   - Aceptado tras revisar que la cobertura de `tasks/` sigue al 100 % (por encima del
     90 % exigido) y que no aparecen supervivientes nuevos.
   - Aceptado también que la línea 28 de `core/errors.py` quede sin cubrir, por la regla de
-    no borrar abstracciones. Qué hacer con ella queda [PENDIENTE] de decisión.
+    no borrar abstracciones. Resuelto en P23 (`5d2cf28`): se eliminó `errors.conflict` y
+    `core/errors.py` vuelve al 100 % ([`logs/28-cobertura-final.txt`](logs/28-cobertura-final.txt)).
 
 - **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
 
@@ -2254,7 +2258,7 @@
   - `mutmut results` → los mismos 9 supervivientes de `_fingerprint` (3, 5, 10, 11, 13, 14,
     15, 16 y 20). Log: [`logs/21-despues-refactor-mutmut.txt`](logs/21-despues-refactor-mutmut.txt)
 - **Captura:** N/A
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `90a09e7`
 
 ## Paso P22 — Resultados de la refactorización
 
@@ -2306,7 +2310,8 @@
 - **Qué acepté / rechacé y por qué:**
   - Aceptado tras revisar que las cifras de cobertura y mutación coinciden con los logs de
     P20 y P21.4, y que el diff no toca tests.
-  - Qué hacer con `errors.conflict`, ahora sin uso, sigue [PENDIENTE] de decisión.
+  - Qué hacer con `errors.conflict`, ahora sin uso, quedó abierto en este paso. Resuelto en
+    P23 (`5d2cf28`): se eliminó.
 
 - **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
 
@@ -2314,7 +2319,7 @@
   - `git diff da93011 HEAD -- tasks/` → 3 archivos (`routes.py` +10/−2, `schemas.py` +12/−3,
     `service.py` +37/−15). Log: [`logs/22-diff-refactor.txt`](logs/22-diff-refactor.txt)
 - **Captura:** N/A
-- **Commit:** `pendiente`
+- **Commit:** sin commit propio; la entrada y sus logs se commitearon en `90a09e7`
 
 ## Paso P23 — Code review por categorías
 
@@ -2527,10 +2532,10 @@
     Log: [`logs/23-tests-arreglo4.txt`](logs/23-tests-arreglo4.txt)
 - **Captura:** N/A
 - **Commit:**
-  - Arreglo 1: `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
-  - Arreglo 2: `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`
-  - Arreglo 3: `fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md`
-  - Arreglo 4: `fix(tasks): created_at de users desde core/clock.py en lugar de datetime.now()`
+  - Arreglo 1: `90a09e7` `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
+  - Arreglo 2: `5d2cf28` `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`
+  - Arreglo 3: `53e7990` `fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md`
+  - Arreglo 4: `f8b8313` `fix(tasks): created_at de users desde core/clock.py en lugar de datetime.now()`
 
 ## Paso P24 — Docstrings estilo Google
 
@@ -2681,7 +2686,7 @@
     Log: [`logs/24-tests.txt`](logs/24-tests.txt)
   - `ruff check .` → "All checks passed!". Log: [`logs/24-ruff.txt`](logs/24-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `docs(tasks): docstrings y documentación OpenAPI`
+- **Commit:** `808cb8c` `docs(tasks): docstrings y documentación OpenAPI`
 
 ## Paso P25 — Documentación OpenAPI
 
@@ -2759,7 +2764,7 @@
   - `ruff check .` → "All checks passed!". Log: [`logs/25-ruff.txt`](logs/25-ruff.txt)
 - **Captura:** [`capturas/P25-openapi.png`](capturas/P25-openapi.png) — Swagger en `/docs` con
   `POST /tasks` desplegada (selector `#operations-tasks-create_task_tasks_post .opblock-summary`).
-- **Commit:** `docs(tasks): docstrings y documentación OpenAPI`
+- **Commit:** `808cb8c` `docs(tasks): docstrings y documentación OpenAPI`
 
 ## Paso P26 — README para onboarding
 
@@ -2856,7 +2861,7 @@
     - `mutmut run`: 123 mutantes, 112 muertos y 11 supervivientes (9 de `_fingerprint` y 2
       de `_decode_utf8_header`).
 - **Captura:** N/A
-- **Commit:** `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`
+- **Commit:** `52404ac` `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`
 
 ## Paso P27 — CHANGELOG y ADR
 
@@ -3022,4 +3027,249 @@
     Log: [`logs/27-tests.txt`](logs/27-tests.txt)
   - `ruff check .` → "All checks passed!". Log: [`logs/27-ruff.txt`](logs/27-ruff.txt)
 - **Captura:** N/A
-- **Commit:** `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`
+- **Commit:** `52404ac` `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`
+
+## Paso P28 — Compilar la evidencia
+
+- **Prompt usado:**
+
+  ```text
+  Con @docs/evidencia/bitacora.md, los logs de docs/evidencia/logs/, las capturas de
+  docs/evidencia/capturas/ y git log main..HEAD, genera dos documentos:
+
+  A) docs/evidencia/EVIDENCIA.md siguiendo EXACTAMENTE la estructura del formato de entrega:
+  1. Especificación y contexto (1.a funcionalidad y criterios, 1.b contexto para la IA
+     con los @archivos usados y el diff de CLAUDE.md, 1.c patrón y justificación).
+  2. Generación (2.a iteraciones solicitud → revisión → refinamiento con snippets,
+     2.b integración y linting, 2.c tabla de propuestas aceptadas/rechazadas y por qué).
+  3. Tests (3.a unitarios con AAA y mocks, 3.b integración con fixtures y
+     setup/teardown, 3.c tabla de cobertura antes/después y tabla de mutación).
+  4. Debugging y refactor (4.a trace, hipótesis, confirmación, fix y regresión;
+     4.b refactors y red de seguridad; 4.c resultados).
+  5. Documentación (5.a docstrings y README, 5.b changelog, 5.c índice de prompts y
+     capturas).
+  6. Reflexión: deja solo el título y el texto "[PENDIENTE: reflexión]".
+
+  B) docs/evidencia/prompts.md: índice de los prompts usados, por fase y paso, con cada
+     prompt literal tal como aparece en la bitácora (prompt principal e iteraciones).
+
+  Usa solo datos reales de los logs: si falta un dato, márcalo como [PENDIENTE] en
+  lugar de inventarlo. Donde vaya una imagen, enlaza la captura que corresponda con
+  ruta relativa. Al final dame la lista de [PENDIENTE] que dejaste.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) que asigna a cada sección del formato de entrega sus pasos de la
+    bitácora, logs, capturas y commits.
+  - `docs/evidencia/EVIDENCIA.md` con las secciones 1–6: tablas de `@archivos` por paso, el
+    diff de `CLAUDE.md`, la evolución del rojo al verde (81 → 39 → 14 → 5 → 1 → 0, contando
+    líneas `FAILED` de los logs 05–09), una tabla de propuestas aceptadas y rechazadas
+    (P2–P27), las tablas de cobertura y mutación, el caso de debugging, los refactors, los
+    bloqueantes del code review, una tabla paso → commit y un índice de las 12 capturas.
+  - `docs/evidencia/prompts.md` generado con un script que extrae los bloques `text` de
+    "Prompt usado" e "Iteraciones" de cada paso. Se comprobó que los 50 bloques coinciden
+    con la bitácora.
+  - Comprobaciones: ningún enlace a `capturas/` ni a `logs/` está roto, y no se hizo commit.
+  - **[PENDIENTE] que quedaron en `EVIDENCIA.md`:**
+    1. P3: motivo de la interrupción de la primera ejecución.
+    2. P13: si se instala pytest-randomly.
+    3. P15: si se mantiene `include=FINGERPRINT_FIELDS`.
+    4. Cobertura del estado final (sin log en el momento de redactar).
+    5. Mutación del estado final (sin log en el momento de redactar).
+    6. Recuento de `mutmut run` en P21.4 (solo hay log de la lista de supervivientes).
+    7. P18: log de la confirmación de la hipótesis.
+    8. P26: log de `pytest`, cobertura y `mutmut`.
+    9. Sección 6, reflexión.
+  - No se trasladaron los [PENDIENTE] de la bitácora ya resueltos por pasos posteriores:
+    `errors.conflict` sin uso y `core/errors.py:28` (eliminada en `5d2cf28`) y la
+    contradicción de la especificación con `conflict()`.
+
+  ```markdown
+  | Momento | Tests | `tasks/` (líneas · ramas) | `core/clock.py` | Total proyecto | Log |
+  |---|---|---|---|---|---|
+  | P0 línea base (sin `tasks`) | 6 passed | — | — | 113 stmts, 2 miss · 6 ramas · 98 % | ... |
+  | P14 después | 113 passed | 100 % · 100 % | **100 %** | 193 stmts, 1 miss · 28 ramas · **99,55 %** | ... |
+  | P21.4 después del refactor | 114 passed | 100 % · 100 % | 100 % | 213 stmts, 2 miss · 30 ramas · 99,18 % | ... |
+  | Estado final (tras P23–P27) | 122 passed | [PENDIENTE] | [PENDIENTE] | [PENDIENTE] | ... |
+  ```
+
+- **Qué acepté / rechacé y por qué:** Aceptado tras revisar que los enlaces relativos
+  existen, que los prompts de `prompts.md` son literales y que cada [PENDIENTE] corresponde a
+  un dato sin log o a una decisión abierta.
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+- **Validación:**
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 122 passed; cobertura total
+    98,04 % (225 stmts, 4 miss; 30 ramas, 1 parcial). `tasks/schemas.py` al 93 % (faltan
+    49 y 52-53, 1 rama parcial); resto de `tasks/` y `core/` al 100 %; `main.py:18` sin
+    cubrir. `tasks/` en conjunto, calculado a partir del log: 145 stmts, 3 miss, 24 ramas,
+    1 parcial → 97,63 %. Log: [`logs/28-cobertura-final.txt`](logs/28-cobertura-final.txt)
+  - `mutmut results` → 11 supervivientes: los 9 de `tasks.service.x__fingerprint` (3, 5, 10,
+    11, 13, 14, 15, 16 y 20) y 2 de `tasks.schemas.x__decode_utf8_header` (5 y 7). El comando
+    no muestra el total ni los muertos. Resuelto en P30: `mutmut run` → 123 mutantes, 112
+    muertos y 11 supervivientes ([`logs/30-mutmut-run.txt`](logs/30-mutmut-run.txt)).
+    Log: [`logs/28-mutmut-final.txt`](logs/28-mutmut-final.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/28-ruff-final.txt`](logs/28-ruff-final.txt)
+  - `git log main..HEAD --oneline` → 23 commits, de `6e9e2a2` a `52404ac`.
+    Log: [`logs/28-commits.txt`](logs/28-commits.txt)
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P29 — Reflexión final
+
+- **Prompt usado:**
+
+  ```text
+  Voy a escribir la reflexión final del reto. Hazme entre 8 y 10 preguntas difíciles
+  basadas en @docs/evidencia/bitacora.md para que la reflexión sea profunda, por ejemplo:
+  qué propuesta de la IA casi se acepta y habría sido un error, qué contexto cambió más
+  la calidad de la salida, dónde la cobertura daba falsa seguridad y la mutación lo
+  destapó, qué hipótesis de debugging fue incorrecta, qué haría distinto en el próximo
+  proyecto, qué prompts reutilizaría como plantilla y qué tareas no delegaría a la IA.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan) con 10 preguntas, cada una anclada en pasos concretos de la bitácora:
+    1. Una decisión mía que era un error: `errors.conflict()` en P9, eliminada en P23,
+       comparada con `Field(strict=True)` en P10.
+    2. Mis prompts de P12/P13 contra la convención de `CLAUDE.md` de P3.
+    3. El rojo de CA-17 sin dueño de P6 a P9.
+    4. La falsa seguridad de la cobertura y la mutación (P14–P16) frente a los defectos de
+       P23 y P24.
+    5. Por qué documentar (P24) encontró lo que el test-first (P5) no vio.
+    6. Un debugging con la respuesta conocida (P17a–P18).
+    7. Reglas de prompt con efectos secundarios (P21.x).
+    8. Cuándo quiero que la IA me desobedezca (P12, P23).
+    9. Qué prompts reutilizaría como plantilla y cuáles no (P16, P12/P13).
+    10. Qué no delegaría y qué haría distinto (P2, P23, P27).
+
+  - Actualizó la tabla de cobertura y mutación de 3.c con los logs de P28.
+  - Revisó la ortografía, la redacción y la claridad de todo el documento: 11 cambios.
+
+  ```markdown
+  1. **Meter en la especificación los requisitos no funcionales desde el día 1**, en
+     particular el comportamiento ante peticiones simultáneas. *Motivo:* P23 #1. La pregunta
+     "¿debe aguantar la idempotencia peticiones simultáneas?" apareció como algo que la IA "no
+     puede juzgar" cuando el código ya estaba terminado.
+  2. **En cada prompt incremental, exigir la lista de rojos esperados con el paso que los
+     cerrará, y no commitear si queda un rojo sin dueño.** *Motivo:* CA-17 en rojo de P6 a P9.
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Acepté las 10 preguntas como base de la reflexión.
+    [PENDIENTE] lo que no tiene log, en lugar de inventarlo.
+  - Acepté actualizar la tabla de 3.c, que me propuso la IA al terminar la reflexión. Los
+    datos de mutación que `mutmut results` no muestra (total y muertos) quedaron pendientes y
+    se resolvieron en P30 (123 mutantes, 112 muertos).
+  - Acepté la revisión de redacción con sus 11 cambios. Solo uno corrige un dato: el rango de
+    pasos de la bitácora, que pasa de P0–P27 a P0–P28.
+- **Iteraciones:**
+  ```text
+  Revisa la ortografía, la redacción y la claridad de toda @docs/evidencia/EVIDENCIA.md
+  sin cambiar las ideas ni añadir contenido. Aplica los cambios y dime cuántos hiciste.
+  ```
+
+  → La IA aplicó 11 cambios, sin faltas de ortografía que corregir. Fueron:
+  - un cambio de sujeto en 1.b;
+  - la primera persona en P7;
+  - "revisó el código contra `CLAUDE.md`";
+  - una frase incompleta en 2.b;
+  - dos enumeraciones (3.a y 3.c);
+  - "5 bloqueantes en 4 arreglos" en 4.b;
+  - dos frases de 5.a;
+  - "la revisión más eficaz por cambio", que era ambiguo;
+  - el rango P0–P28 de las fuentes, que es el único cambio de dato.
+
+  → Ajuste: `EVIDENCIA.md` queda revisado, con las mismas ideas.
+- **Validación:** ninguna (paso de documentación, sin comandos de validación).
+- **Captura:** N/A
+- **Commit:** `pendiente`
+
+## Paso P30 — Verificación final
+
+- **Prompt usado:**
+
+  ```text
+  Verifica la definición de hecho de @CLAUDE.md y el checklist de entrega:
+  ejecuta pytest -q, la cobertura con ramas, ruff check . y git status.
+  Comprueba que cada criterio CA-XX de @docs/feature-tasks.md tiene al menos un
+  test que lo nombra, que README/CHANGELOG/ADR/EVIDENCIA/prompts existen y que no se
+  modificaron migrations/ ni legacy/ (git diff main...HEAD --stat).
+  Entrega una tabla requisito | estado | evidencia. No cambies código.
+  ```
+
+- **Qué propuso la IA:**
+  - Un plan (modo plan). Primero hizo las comprobaciones de solo lectura:
+    - `git status`;
+    - `git diff main...HEAD --stat`;
+    - el cruce CA → test;
+    - la existencia de los entregables;
+    - los docstrings, revisados con `ast`.
+
+    Después ejecutó `pytest -q`, las dos variantes de cobertura y `ruff check .`. No cambió
+    código.
+  - Tabla de verificación:
+
+  | Requisito | Estado | Evidencia |
+  |---|---|---|
+  | `pytest` en verde | ✅ | 122 tests en verde, sin fallos |
+  | Cobertura de `tasks/` > 90 % (`pytest --cov=tasks --cov-branch`) | ✅ | 97,63 % (145 stmts, 3 miss; 24 ramas, 1 parcial) |
+  | Cobertura con ramas del proyecto | ✅ | 98,04 % (225 stmts, 4 miss; 30 ramas, 1 parcial); umbral `fail_under = 90` alcanzado |
+  | `ruff check .` limpio | ✅ | `All checks passed!` |
+  | Docstrings Google en las funciones públicas de `service.py` | ✅ en `tasks/` | `create_task` y `get_task` tienen Args/Returns/Raises; `list_tasks` tiene Args/Returns y no lanza errores |
+  | `README.md` actualizado | ✅ | 26 menciones de `tasks`; curl verificados en P26; `52404ac` |
+  | `CHANGELOG.md` actualizado | ✅ | `[Unreleased]`, `[0.2.0] - 2026-10-21`, `[0.1.0] - 2026-09-16`; `52404ac` |
+  | ADR | ✅ | `docs/adr/0001-idempotencia-en-alta-de-tareas.md` (`52404ac`) |
+  | `EVIDENCIA.md` y `prompts.md` | ⚠️ Existen, sin commitear | sin seguimiento en `git status` |
+  | Cada CA-XX tiene al menos un test que lo nombra | ✅ | 43/43 ids con su `def test_caXX_` en `tests/test_tasks.py` |
+  | `migrations/` y `legacy/` sin cambios | ✅ | `git diff main...HEAD --stat -- migrations legacy` vacío; 92 archivos cambiados en total (+9880 / −24) |
+  | Working tree | ⚠️ Solo evidencia | `bitacora.md` modificado; `EVIDENCIA.md`, `prompts.md` y logs `28-*` sin seguimiento; ningún cambio de código |
+
+  - Observaciones, que no incumplen la definición de hecho:
+    - `tasks/schemas.py` al 93 % (faltan 49 y 52-53: la rama de una clave que no es UTF-8
+      válido, de P24);
+    - 2 supervivientes sin clasificar en `_decode_utf8_header`;
+    - funciones públicas de `users/service.py` sin docstring (código previo de `main`);
+    - los [PENDIENTE] de `EVIDENCIA.md`.
+
+  ```text
+  Name                  Stmts   Miss Branch BrPart  Cover   Missing
+  tasks/schemas.py         49      3      6      1    93%   49, 52-53
+  tasks/service.py         54      0     18      0   100%
+  TOTAL                   225      4     30      1    98%
+  Required test coverage of 90.0% reached. Total coverage: 98.04%
+  122 passed
+  ```
+
+  - **Cierre de la evidencia:**
+    - Las líneas **Commit:** de la bitácora llevan el hash corto real, sacado de
+      `git log main..HEAD`. Los pasos sin commit propio indican el commit que incluyó su
+      entrada y sus logs, buscado con `git log -S`.
+    - Se resolvieron con datos reales 7 marcadores de `bitacora.md`:
+      - P9 y P10: `15500cd` y `5d2cf28`;
+      - P11: `480b421`;
+      - P21.4 y P22: `5d2cf28`;
+      - P28 y P29: el `mutmut run` de este paso.
+    - Se resolvieron 2 marcadores de `EVIDENCIA.md`: la fila de mutación final y los
+      resultados de P26.
+    - Se añadió la captura de P30 a `EVIDENCIA.md` (3.c y 5.c).
+    - Se regeneró `prompts.md` con P28–P30.
+- **Qué acepté / rechacé y por qué:** Aceptado tras revisar que cada fila de la tabla sale de
+  un comando ejecutado en el paso y que no se cambió código.
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+- **Validación:**
+  - `pytest -q` → 122 tests en verde (72 + 50 puntos), sin fallos.
+    Log: [`logs/30-tests.txt`](logs/30-tests.txt)
+  - `pytest --cov --cov-branch --cov-report=term-missing` → 122 passed; cobertura total
+    98,04 %; `tasks/schemas.py` al 93 % (49, 52-53); `main.py:18` sin cubrir.
+    Log: [`logs/30-cobertura.txt`](logs/30-cobertura.txt)
+  - `ruff check .` → `All checks passed!`. Log: [`logs/30-ruff.txt`](logs/30-ruff.txt)
+  - `git diff main...HEAD --stat` → 92 archivos cambiados, 9880 inserciones y 24 borrados;
+    nada en `migrations/` ni `legacy/`. Log: [`logs/30-diff-stat.txt`](logs/30-diff-stat.txt)
+  - Para resolver los marcadores de mutación:
+    - `mutmut run` → 123/123: 112 muertos, 11 supervivientes, 0 timeout, 0 sospechosos;
+      reutilizó la caché ("0.00 mutations/second").
+      Log: [`logs/30-mutmut-run.txt`](logs/30-mutmut-run.txt)
+    - `mutmut results` → los 9 de `_fingerprint` y 2 de `_decode_utf8_header`.
+      Log: [`logs/30-mutmut-results.txt`](logs/30-mutmut-results.txt)
+- **Captura:** ![Cobertura final con ramas](capturas/P30-cobertura-final.png)
+- **Commit:** `docs: evidencia del proceso y reflexión`

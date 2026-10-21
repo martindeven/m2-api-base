@@ -1,0 +1,93 @@
+ .gitignore                                         |    2 +
+ CHANGELOG.md                                       |   93 +
+ CLAUDE.md                                          |   28 +-
+ README.md                                          |  174 +-
+ core/clock.py                                      |   32 +
+ docs/adr/0001-idempotencia-en-alta-de-tareas.md    |  115 +
+ docs/evidencia/bitacora.md                         | 3025 ++++++++++++++++++++
+ docs/evidencia/capturas/.gitkeep                   |    0
+ docs/evidencia/capturas/P00-linea-base.png         |  Bin 0 -> 9046 bytes
+ docs/evidencia/capturas/P05-tests-rojos.png        |  Bin 0 -> 3873082 bytes
+ docs/evidencia/capturas/P10-curl.png               |  Bin 0 -> 66608 bytes
+ docs/evidencia/capturas/P10-swagger.png            |  Bin 0 -> 76986 bytes
+ docs/evidencia/capturas/P14-cobertura-terminal.png |  Bin 0 -> 67488 bytes
+ docs/evidencia/capturas/P14-cobertura.png          |  Bin 0 -> 78976 bytes
+ docs/evidencia/capturas/P15-mutmut-antes.png       |  Bin 0 -> 39984 bytes
+ docs/evidencia/capturas/P16-mutmut-despues.png     |  Bin 0 -> 40314 bytes
+ docs/evidencia/capturas/P17-bug-trace.png          |  Bin 0 -> 65279 bytes
+ docs/evidencia/capturas/P19-fix-verde.png          |  Bin 0 -> 9336 bytes
+ docs/evidencia/capturas/P19-regresion-rojo.png     |  Bin 0 -> 57145 bytes
+ docs/evidencia/capturas/P25-openapi.png            |  Bin 0 -> 358170 bytes
+ docs/evidencia/logs/00-linea-base-cobertura.txt    |   19 +
+ docs/evidencia/logs/00-linea-base-ruff.txt         |    1 +
+ docs/evidencia/logs/00-linea-base-tests.txt        |    1 +
+ docs/evidencia/logs/03-tests.txt                   |    1 +
+ docs/evidencia/logs/04-ruff.txt                    |    1 +
+ docs/evidencia/logs/04-tests.txt                   |    1 +
+ docs/evidencia/logs/05-tests-rojos.txt             | 1466 ++++++++++
+ docs/evidencia/logs/06-ruff.txt                    |    1 +
+ docs/evidencia/logs/06-tests.txt                   | 1145 ++++++++
+ docs/evidencia/logs/07-ruff.txt                    |    1 +
+ docs/evidencia/logs/07-tests.txt                   |  686 +++++
+ docs/evidencia/logs/08-ruff.txt                    |    1 +
+ docs/evidencia/logs/08-tests.txt                   |   99 +
+ docs/evidencia/logs/09-ruff.txt                    |    1 +
+ docs/evidencia/logs/09-tests.txt                   |   25 +
+ docs/evidencia/logs/10-curl.txt                    |   18 +
+ docs/evidencia/logs/10-ruff.txt                    |    1 +
+ docs/evidencia/logs/10-tests-verde.txt             |    2 +
+ docs/evidencia/logs/11-cobertura-antes.txt         |   25 +
+ docs/evidencia/logs/11-mutmut-version.txt          |    1 +
+ docs/evidencia/logs/12-ruff.txt                    |    1 +
+ docs/evidencia/logs/12-tests.txt                   |    2 +
+ docs/evidencia/logs/13-cobertura.txt               |   25 +
+ docs/evidencia/logs/13-tests-run1.txt              |    2 +
+ docs/evidencia/logs/13-tests-run2.txt              |    2 +
+ docs/evidencia/logs/14-cobertura-final.txt         |   26 +
+ docs/evidencia/logs/15-mutmut-results.txt          |    9 +
+ docs/evidencia/logs/15-mutmut-run.txt              |   10 +
+ docs/evidencia/logs/15-mutmut-show.txt             |  107 +
+ docs/evidencia/logs/16-cobertura.txt               |   25 +
+ docs/evidencia/logs/16-mutmut-despues.txt          |    9 +
+ docs/evidencia/logs/16-mutmut-run.txt              |   10 +
+ docs/evidencia/logs/17-bug-trace.txt               |   25 +
+ docs/evidencia/logs/17a-diff-bug.txt               |   45 +
+ docs/evidencia/logs/19-fix-verde.txt               |    2 +
+ docs/evidencia/logs/19-regresion-rojo.txt          |   19 +
+ docs/evidencia/logs/19-ruff.txt                    |    1 +
+ .../evidencia/logs/20-antes-refactor-cobertura.txt |   25 +
+ docs/evidencia/logs/20-antes-refactor-tests.txt    |    2 +
+ docs/evidencia/logs/21-1-ruff.txt                  |    1 +
+ docs/evidencia/logs/21-1-tests.txt                 |    2 +
+ docs/evidencia/logs/21-2-ruff.txt                  |    1 +
+ docs/evidencia/logs/21-2-tests.txt                 |    2 +
+ docs/evidencia/logs/21-3-ruff.txt                  |    1 +
+ docs/evidencia/logs/21-3-tests.txt                 |    2 +
+ .../logs/21-despues-refactor-cobertura.txt         |   25 +
+ docs/evidencia/logs/21-despues-refactor-mutmut.txt |    9 +
+ docs/evidencia/logs/22-diff-refactor.txt           |  143 +
+ docs/evidencia/logs/23-tests-arreglo1.txt          |    2 +
+ docs/evidencia/logs/23-tests-arreglo2.txt          |    2 +
+ docs/evidencia/logs/23-tests-arreglo3.txt          |    2 +
+ docs/evidencia/logs/23-tests-arreglo4.txt          |    2 +
+ docs/evidencia/logs/24-ruff.txt                    |    1 +
+ docs/evidencia/logs/24-tests.txt                   |    2 +
+ docs/evidencia/logs/25-ruff.txt                    |    1 +
+ docs/evidencia/logs/25-tests.txt                   |    2 +
+ docs/evidencia/logs/26-readme-verificacion.txt     |  137 +
+ docs/evidencia/logs/27-ruff.txt                    |    1 +
+ docs/evidencia/logs/27-tests.txt                   |    2 +
+ docs/feature-tasks.md                              |  449 +++
+ main.py                                            |    4 +-
+ pyproject.toml                                     |   18 +-
+ requirements.txt                                   |    1 +
+ tasks/__init__.py                                  |    7 +
+ tasks/repository.py                                |  135 +
+ tasks/routes.py                                    |  192 ++
+ tasks/schemas.py                                   |  177 ++
+ tasks/service.py                                   |  169 ++
+ tests/conftest.py                                  |    9 +-
+ tests/test_tasks.py                                | 1070 +++++++
+ tests/test_users.py                                |   16 +
+ users/repository.py                                |    5 +-
+ 92 files changed, 9880 insertions(+), 24 deletions(-)
