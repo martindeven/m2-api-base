@@ -2760,3 +2760,266 @@
 - **Captura:** [`capturas/P25-openapi.png`](capturas/P25-openapi.png) — Swagger en `/docs` con
   `POST /tasks` desplegada (selector `#operations-tasks-create_task_tasks_post .opblock-summary`).
 - **Commit:** `docs(tasks): docstrings y documentación OpenAPI`
+
+## Paso P26 — README para onboarding
+
+- **Prompt usado:**
+
+  ```text
+  Actualiza @README.md a partir del repo REAL (@pyproject.toml, @requirements.txt,
+  @main.py, @tasks/routes.py, @docs/feature-tasks.md), sin inventar comandos:
+  1. Qué es el proyecto (añade el recurso tasks y su objetivo de trazabilidad).
+  2. Requisitos, instalación, arranque.
+  3. Tabla de endpoints actualizada (users + tasks) con códigos de respuesta.
+  4. Sección "Uso de tasks" con ejemplos curl: crear, repetir con Idempotency-Key
+     (200), conflicto (409), validación (422), filtrar por responsable.
+  5. Tests y calidad: pytest, cobertura con ramas, umbral, mutmut, ruff.
+  6. "Guía rápida para colaboradores": estructura por capas, cómo añadir un recurso
+     nuevo siguiendo tasks/ como plantilla y dónde están las convenciones (CLAUDE.md).
+  7. Enlaces a CHANGELOG.md, docs/feature-tasks.md y docs/adr/.
+  Mantén las secciones existentes que sigan siendo ciertas (tabla de ramas del módulo).
+  Después ejecuta cada comando y cada curl del README (con la app en segundo plano),
+  corrige lo que no funcione, dime qué corregiste y detén la app.
+  ```
+
+- **Qué propuso la IA:**
+  - Reescribió `README.md` a partir de los archivos reales del repo:
+    - descripción del proyecto, con el objetivo de trazabilidad de `tasks`;
+    - requisitos (Python ≥ 3.10, tomado de `requires-python`), instalación y arranque;
+    - tabla de endpoints de `users` y `tasks` con sus códigos de respuesta.
+  - Añadió la sección "Uso de `tasks`" con curl en orden de ejecución: alta (201),
+    `Idempotency-Key` (201 y, al repetir, 200), conflicto (409), validación (422 de forma y
+    422 por fecha pasada), responsable inexistente (404), listar, filtrar por `assignee_id` y
+    consultar.
+  - Añadió "Tests y calidad", con estos comandos y datos sacados de `CLAUDE.md` y
+    `pyproject.toml`:
+    - `pytest`, cobertura con ramas, `--cov=tasks --cov-branch`, umbral `fail_under = 90`;
+    - `ruff check .`, `mutmut run` y `mutmut results`.
+  - Añadió la "Guía rápida para colaboradores":
+    - tabla de capas;
+    - 7 pasos para añadir un recurso usando `tasks/` como plantilla (spec, paquete, catálogo
+      de errores y reloj, router en `main.py`, `reset()` en `conftest.py`, tests y
+      `pyproject.toml`);
+    - enlace a `CLAUDE.md` para las convenciones.
+  - Mantuvo sin cambios la tabla de ramas del módulo y la tarea del laboratorio (Clase 1),
+    porque siguen siendo ciertas.
+  - Ejecutó cada comando del README:
+    - `python -m venv` + `pip install -r requirements.txt` en un venv limpio en el
+      scratchpad. Instaló bien, y `pytest` con ese venv dio `122 passed`.
+    - Con la app real levantada, comprobó `uvicorn main:app --reload`, `/health` y `/docs`
+      (200), todos los curl y los códigos de la tabla de endpoints.
+    - `pytest`, las dos variantes de cobertura, `ruff check .`, `mutmut run` y
+      `mutmut results`.
+  - **Comandos que fallaron:** ninguno, todos funcionaron.
+  - **Lo que corrigió en el README:**
+    1. **`docs/adr/` no existe en el repo.** Un enlace habría quedado roto, así que no se
+       enlaza ni se inventan ADRs. La sección Documentación indica que todavía no hay
+       ninguno.
+    2. **El borrador decía que mutmut "tarda varios minutos".** La ejecución real generó 123
+       mutantes en segundos (67 mutaciones por segundo), así que se quitó la frase.
+    3. **La fecha de ejemplo es `2030-12-31` en lugar de `2026-12-31`.** Con la del spec, el
+       ejemplo de alta empezaría a dar 422 a partir del 1 de enero de 2027.
+  - No ejecutó `git switch clase2-testing`, porque cambiaría la rama de trabajo. Comprobó con
+    `git branch -r` que las 8 ramas de la tabla existen en `origin`.
+
+  ```bash
+  curl -i -X POST http://127.0.0.1:8000/tasks \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: alta-backup-001" \
+    -d '{"title": "Rotar certificados", "assignee_id": 2}'
+  ```
+
+- **Qué acepté / rechacé y por qué:**
+  - Aceptado tras revisar que cada comando y cada curl del README se ejecutó de verdad con
+    la app levantada, y que el resultado coincide con lo que el README promete.
+  - Acepté dejar `docs/adr/` sin enlace en lugar de crear la carpeta, para no inventar
+    documentación. Es una decisión propuesta por la IA y aceptada.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - Curl del README con `uvicorn main:app --port 8000` levantada en segundo plano y detenida al
+    terminar (`/health` ya no responde):
+    - alta: 201;
+    - `Idempotency-Key`: 201 y, al repetir, 200;
+    - misma clave con otro cuerpo: 409;
+    - título corto: 422;
+    - fecha pasada: 422;
+    - responsable inexistente: 404;
+    - listar, filtrar y consultar: 200.
+    Log: [`logs/26-readme-verificacion.txt`](logs/26-readme-verificacion.txt)
+  - Resto de comandos del README, sin log propio (salida en la conversación del paso):
+    - `pytest`: 122 passed;
+    - `pytest --cov --cov-branch --cov-report=term-missing`: 98,04 %;
+    - `pytest --cov=tasks --cov-branch`: 97,63 %;
+    - `ruff check .`: All checks passed!;
+    - `mutmut run`: 123 mutantes, 112 muertos y 11 supervivientes (9 de `_fingerprint` y 2
+      de `_decode_utf8_header`).
+- **Captura:** N/A
+- **Commit:** `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`
+
+## Paso P27 — CHANGELOG y ADR
+
+- **Prompt usado:**
+
+  ```text
+  1. Crea CHANGELOG.md con el formato "Keep a Changelog" y versionado semántico.
+     Versión 0.2.0 con la fecha de hoy (Added / Changed / Fixed), a partir de
+     `git log main..HEAD --oneline`. Incluye la entrada 0.1.0 como base existente.
+     Actualiza la versión a 0.2.0 en @pyproject.toml y en FastAPI(version=) de @main.py
+     (si main.py no declara version, añádela).
+  2. Crea docs/adr/0001-idempotencia-en-alta-de-tareas.md (Contexto, Decisión,
+     Alternativas consideradas, Consecuencias). Redacta la estructura y las
+     alternativas técnicas; el PORQUÉ de negocio es este: el objetivo del sprint es
+     reducir las pérdidas de trabajo no registrado y mejorar la trazabilidad; los
+     reintentos del cliente ante timeouts o fallos de red, y los dobles envíos del
+     equipo de soporte operativo, podían duplicar tareas y romper esa trazabilidad.
+  3. Ejecuta pytest -q y ruff check .
+  ```
+
+- **Qué propuso la IA:**
+  - Antes de escribir, leyó los datos reales del repo:
+    - `git log main..HEAD` tiene 22 commits, de `6e9e2a2` a `808cb8c`.
+    - El historial de `main` termina en `7517640`, del 2026-09-16.
+    - No hay tags.
+  - Reescribió `CHANGELOG.md` con el formato Keep a Changelog 1.1.0 y SemVer:
+    - `[Unreleased]` vacía;
+    - `[0.2.0] - 2026-10-21` con Added, Changed y Fixed, a partir de esos commits;
+    - `[0.1.0] - 2026-09-16` como base existente en `main`. No hay tag, así que la fecha es la
+      del último commit de `main`.
+  - Dejó fuera del CHANGELOG:
+    - `errors.conflict()`, que se añadió y se quitó dentro de la misma versión sin publicar;
+    - los enlaces de comparación al pie, que sin tags quedarían rotos.
+  - Subió la versión a `0.2.0` en `pyproject.toml` y en `FastAPI(version=)` de `main.py`.
+    `main.py` ya declaraba `version`, así que solo cambió el valor.
+  - Creó `docs/adr/0001-idempotencia-en-alta-de-tareas.md` y enlazó el ADR desde `README.md`,
+    donde antes ponía "todavía no hay ninguno", y desde el CHANGELOG.
+  - Entrada 0.2.0 del CHANGELOG:
+
+  ```markdown
+  ## [0.2.0] - 2026-10-21
+
+  ### Added
+
+  - Recurso `tasks` para registrar tareas de equipo con responsable, prioridad y fecha límite.
+    Especificación y criterios de aceptación en `docs/feature-tasks.md`. Endpoints:
+    - `POST /tasks`: crea una tarea con `status` `"pending"`.
+    - `GET /tasks`: lista por `id` ascendente, con filtro opcional `?assignee_id=`.
+    - `GET /tasks/{task_id}`: consulta una tarea.
+  - Validaciones de forma (422 con el formato de Pydantic):
+    - `title`: se recorta y, después de recortarlo, debe tener entre 3 y 120 caracteres.
+    - `description`: 1000 caracteres como máximo.
+    - `priority`: entero estricto entre 1 y 5; si no se envía, vale 3.
+    - `due_date`: solo `YYYY-MM-DD`.
+    - `assignee_id`: entero estricto, ≥ 1.
+  - Reglas de dominio:
+    - `due_date` no puede ser anterior a hoy en UTC (422 con mensaje de texto).
+    - `assignee_id` debe ser un usuario existente (404).
+  - Alta idempotente opcional con la cabecera `Idempotency-Key`. Si se repite la misma clave
+    con el mismo cuerpo normalizado, devuelve 200 con la tarea original; con otro cuerpo
+    devuelve 409. La clave solo se guarda cuando la tarea se crea.
+  - `core/clock.py` con `now()` y `today()` en UTC. Es el único punto que consulta la fecha
+    del sistema y se puede sustituir en los tests.
+  - Tests de `tasks`:
+    - uno por criterio de aceptación (CA-01 a CA-43);
+    - unitarios del service, con el reloj y los usuarios simulados;
+    - un flujo de integración entre `users` y `tasks`;
+    - tests de regresión.
+  - Cobertura de ramas con umbral `fail_under = 90` y mutation testing con mutmut, ambos
+    configurados en `pyproject.toml`.
+  - Docstrings estilo Google en `tasks/service.py`, `tasks/repository.py` y `core/clock.py`.
+  - Documentación OpenAPI de `tasks` en `/docs`:
+    - `summary`, `description` y `responses=` con los códigos 200, 201, 404, 409 y 422;
+    - descripciones y ejemplos de los campos;
+    - documentación de la cabecera `Idempotency-Key`.
+  - ADR [`docs/adr/0001-idempotencia-en-alta-de-tareas.md`](docs/adr/0001-idempotencia-en-alta-de-tareas.md).
+
+  ### Changed
+
+  - `CLAUDE.md` incluye las convenciones del recurso `tasks`:
+    - el reloj de `core/clock.py`;
+    - validaciones de forma en los schemas y reglas de dominio en el service;
+    - los recursos se consultan entre sí a través de su `service.py`;
+    - `reset()` en la fixture de los tests;
+    - la definición de hecho.
+  - `create_task` se divide en funciones de dominio con nombre, y los límites de validación
+    pasan a ser constantes con nombre.
+  - El 409 de idempotencia usa `errors.already_exists` del catálogo de errores.
+  - `users` toma `created_at` de `core/clock.py` en lugar de `datetime.now()`.
+  - Los tests de `tasks` se concentran en un único archivo, `tests/test_tasks.py`, como pide la
+    convención de un archivo por recurso.
+  - `README.md` reescrito para el onboarding:
+    - endpoints con sus códigos de respuesta;
+    - ejemplos `curl` de `tasks`;
+    - tests y calidad;
+    - una guía para colaboradores.
+  - Versión 0.2.0 en `pyproject.toml` y en la app FastAPI.
+
+  ### Fixed
+
+  - Dos peticiones simultáneas con la misma `Idempotency-Key` ya no crean dos tareas: la
+    búsqueda de la clave, la creación y el guardado son atómicos.
+  - Una `due_date` con hora, aunque sea `T00:00:00`, se rechaza con 422.
+  - La longitud de `Idempotency-Key` se cuenta en caracteres y no en bytes: una clave de 64
+    caracteres no ASCII se acepta.
+  - Los 422 de forma de `title` y `due_date` usan el mensaje de Pydantic por defecto en lugar de
+    un texto propio.
+  ```
+
+  - Resumen del ADR 0001 (estado Aceptada, 2026-10-21):
+    - **Contexto:**
+      - El porqué de negocio es el que di: reducir las pérdidas de trabajo no registrado y
+        mejorar la trazabilidad. Los reintentos del cliente ante timeouts o fallos de red, y
+        los dobles envíos del equipo de soporte operativo, podían duplicar tareas.
+      - Restricciones técnicas: no hay autenticación, el almacén está en memoria, las rutas
+        son síncronas en un threadpool y hay clientes que no envían la cabecera.
+    - **Decisión:**
+      1. Cabecera `Idempotency-Key` opcional, de 1 a 64 caracteres.
+      2. Huella SHA-256 del cuerpo normalizado (A5).
+      3. Misma huella → 200 con la tarea original; huella distinta → 409 con
+         `errors.already_exists`.
+      4. La clave solo se guarda tras un 201.
+      5. Orden de evaluación del spec.
+      6. Clave global y sin caducidad.
+      7. `threading.Lock` para que el alta sea atómica.
+    - **Alternativas consideradas (8, cada una con su motivo de descarte):**
+      - no hacer nada;
+      - deduplicar por clave natural, que da falsos positivos;
+      - cabecera obligatoria, que rompe a los clientes actuales;
+      - devolver 200 aunque cambie el cuerpo, que oculta errores del cliente;
+      - reservar la clave aunque la petición falle, que bloquea el reintento corregido;
+      - `PUT` con id del cliente, que cambia el contrato;
+      - TTL o claves por usuario, fuera de alcance;
+      - `async def` sin lock, que es frágil.
+    - **Consecuencias:**
+      - **Positivas:** un reintento o un doble envío ya no duplica tareas, y el contrato es
+        compatible con los clientes que no envían la cabecera.
+      - **Riesgos asumidos:**
+        - la memoria crece sin límite;
+        - las claves se pierden al reiniciar;
+        - dos clientes pueden chocar con la misma clave;
+        - el lock serializa las altas;
+        - la cabecera hay que decodificarla como UTF-8.
+      - **Trabajo futuro:** TTL, claves por usuario y persistencia con restricción de
+        unicidad.
+
+- **Qué acepté / rechacé y por qué:**
+  - Aceptado tras revisar que:
+    - cada entrada de 0.2.0 corresponde a commits de `git log main..HEAD`, salvo el README de
+      onboarding (P26) y el propio ADR, que se commitean con esta versión;
+    - el Contexto del ADR recoge el porqué de negocio que di, sin añadirle motivos nuevos;
+    - la app reporta `app.version = 0.2.0`;
+    - todos los enlaces relativos de README, CHANGELOG y ADR apuntan a archivos que existen.
+  - Dos decisiones propuestas por la IA y aceptadas:
+    - fechar 0.1.0 con el último commit de `main`, porque no hay tags;
+    - no poner enlaces de comparación hasta que existan los tags `v0.1.0` y `v0.2.0`.
+
+- **Iteraciones:** ninguna; un único mensaje de trabajo en el paso.
+
+- **Validación:**
+  - `pytest -q` → 122 tests en verde, sin fallos. La cifra sale de contar los puntos
+    (72 + 50); la ejecución sin `-q` da `122 passed`.
+    Log: [`logs/27-tests.txt`](logs/27-tests.txt)
+  - `ruff check .` → "All checks passed!". Log: [`logs/27-ruff.txt`](logs/27-ruff.txt)
+- **Captura:** N/A
+- **Commit:** `docs: README, CHANGELOG 0.2.0 y ADR de idempotencia`

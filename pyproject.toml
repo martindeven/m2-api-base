@@ -1,6 +1,6 @@
 [project]
 name = "m2-api-base"
-version = "0.1.0"
+version = "0.2.0"
 description = "API REST de usuarios — repo base del Módulo 2 (Next-Gen Coding)"
 requires-python = ">=3.10"
 
