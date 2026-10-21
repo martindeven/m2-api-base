@@ -5,6 +5,9 @@ Estilo de referencia para nuevos tests:
   - arrange / act / assert separados por una línea en blanco
   - se comprueba el status code y lo mínimo del cuerpo que da confianza
 """
+from datetime import datetime, timezone
+
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -54,3 +57,16 @@ def test_create_user_email_invalido_devuelve_422(client: TestClient) -> None:
     response = client.post("/users", json=payload)
 
     assert response.status_code == 422
+
+
+def test_create_user_toma_created_at_del_reloj_de_la_aplicacion(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instant = datetime(2026, 10, 20, 9, 30, tzinfo=timezone.utc)
+    monkeypatch.setattr("core.clock.now", lambda: instant)
+    payload = {"name": "Margaret Hamilton", "email": "margaret@example.com"}
+
+    response = client.post("/users", json=payload)
+
+    assert response.status_code == 201
+    assert datetime.fromisoformat(response.json()["created_at"]) == instant

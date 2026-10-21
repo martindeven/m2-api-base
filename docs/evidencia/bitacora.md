@@ -2355,7 +2355,7 @@
   | 8 | `tasks/schemas.py:63` | `Task` hereda los validadores de entrada | Menor |
   | 9 | `tasks/service.py:66-70` | 404 del responsable vía `users_service.get_user` | Falso positivo: intencional porque CLAUDE.md (consulta vía `service.py`) y decisión 5 |
   | 10 | `CLAUDE.md:20` | Tests de `tasks` en 3 archivos de más | **Bloqueante** (convención "un archivo por recurso") · corregido |
-  | 11 | `users/repository.py:28` | `datetime.now()` directo (código previo) | **Bloqueante** (convención de `core/clock.py`) |
+  | 11 | `users/repository.py:28` | `datetime.now()` directo (código previo) | **Bloqueante** (convención de `core/clock.py`) · corregido |
   | 12 | `tests/test_tasks.py:20-22` | `created_at` no se fija en los tests | Menor |
   | 13 | — | Sin test de peticiones simultáneas | **Bloqueante** (va con #1) · corregido |
   | 14 | `pyproject.toml:36` | `fail_under = 90` para todo el proyecto | Menor |
@@ -2392,8 +2392,10 @@
   - Después pedí corregir solo el siguiente bloqueante (#4) y parar. La línea de
     `CHANGELOG.md:14` que anuncia `conflict()` (#5, menor) no se tocó.
   - Para el #10, la IA eligió fusionar los tests en `tests/test_tasks.py` en vez de cambiar la
-    convención de CLAUDE.md, porque es la opción conservadora. Lo aprobé así. #11 queda
-    pendiente.
+    convención de CLAUDE.md, porque es la opción conservadora. Lo aprobé así.
+  - Para el #11 aprobé cambiar `users/repository.py` para que use `clock.now()`, aunque es
+    código de antes de la rama, porque la convención de `core/clock.py` la introduce esta
+    rama. Con eso no queda ningún bloqueante. Los menores, entre ellos #5, siguen sin tocar.
 
 - **Iteraciones:**
   - **Iteración 1 · arreglo del bloqueante #1**
@@ -2479,6 +2481,40 @@
   _real_today = clock.today
   ```
 
+  - **Iteración 4 · arreglo del bloqueante #11**
+
+    ```text
+    Corrige el siguiente bloqueante de la tabla, ejecuta pytest -q y ruff check . y para.
+    Si no quedan bloqueantes, dímelo y no cambies nada.
+    ```
+
+    - **Respuesta:**
+      - Identificó el #11 como último bloqueante: `users/repository.py:28` llamaba a
+        `datetime.now(timezone.utc)` sin pasar por `core/clock.py`.
+      - Primero añadió en `tests/test_users.py` el test
+        `test_create_user_toma_created_at_del_reloj_de_la_aplicacion`. Fija `core.clock.now`,
+        hace `POST /users` y comprueba `created_at`. Antes del arreglo, el test falló.
+      - Después cambió `users/repository.py`: `from core import clock` y
+        `created_at=clock.now()`, igual que en `tasks/repository.py`. El comportamiento no
+        cambia.
+    - **Ajuste resultante:**
+      - `pytest -q` queda en verde, con 116 tests (72 + 44 puntos; el nuevo está en
+        `test_users.py`, que pasa de 6 a 7 tests). `ruff check .` da "All checks passed!".
+      - Un grep de `datetime.now` y `date.today` en `core/`, `tasks/`, `users/` y `main.py`
+        solo encuentra `core/clock.py:11`.
+      - No quedan bloqueantes en la tabla.
+
+  ```python
+  def add(*, name: str, email: str) -> User:
+      global _next_id
+      user = User(
+          id=_next_id,
+          name=name,
+          email=email,
+          created_at=clock.now(),
+      )
+  ```
+
 - **Validación:**
   - Arreglo 1: `pytest -q` → 115 tests en verde, sin fallos. La cifra sale de contar los
     puntos: 72 + 43, y esta salida no imprime línea de resumen.
@@ -2487,8 +2523,11 @@
     Log: [`logs/23-tests-arreglo2.txt`](logs/23-tests-arreglo2.txt)
   - Arreglo 3: `pytest -q` → 115 tests en verde, sin fallos (72 + 43 puntos).
     Log: [`logs/23-tests-arreglo3.txt`](logs/23-tests-arreglo3.txt)
+  - Arreglo 4: `pytest -q` → 116 tests en verde, sin fallos (72 + 44 puntos).
+    Log: [`logs/23-tests-arreglo4.txt`](logs/23-tests-arreglo4.txt)
 - **Captura:** N/A
 - **Commit:**
   - Arreglo 1: `fix(tasks): idempotencia atómica ante peticiones simultáneas con la misma clave`
   - Arreglo 2: `fix(tasks): quitar errors.conflict() sin uso, fuera del alcance del spec`
   - Arreglo 3: `fix(tasks): tests de tasks en un solo archivo según la convención de CLAUDE.md`
+  - Arreglo 4: `fix(tasks): created_at de users desde core/clock.py en lugar de datetime.now()`
